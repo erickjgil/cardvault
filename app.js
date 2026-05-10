@@ -4,8 +4,10 @@
 let _supabaseClient = null;
 function getSB(){
   if(_supabaseClient) return _supabaseClient;
-  if(typeof window !== 'undefined' && window._supabase){
-    _supabaseClient = window._supabase.createClient(getSupabaseUrl(), getSupabaseKey());
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
+  if(typeof window !== 'undefined' && window._supabase && url && key){
+    _supabaseClient = window._supabase.createClient(url, key);
   }
   return _supabaseClient;
 }
@@ -171,6 +173,9 @@ async function loadUserCards(){
 
 // Initialize auth on startup
 async function initAuth(){
+  // Load config (env vars) from Netlify function first
+  await loadConfig();
+
   // Wait for Supabase SDK to be available
   let attempts = 0;
   while(!window._supabase && attempts < 20){
@@ -180,7 +185,6 @@ async function initAuth(){
 
   const sb = getSB();
   if(!sb){
-    // No Supabase — run without auth (local only mode)
     console.warn('Supabase not available, running in local mode');
     cards = JSON.parse(localStorage.getItem('cv_cards')||'[]');
     updateStats(); renderGrid();
@@ -215,8 +219,37 @@ let currentView = 'catalog';
 let prevView = 'catalog';
 
 // -- SUPABASE SYNC ----------------------------------------------
-function getSupabaseUrl(){ return localStorage.getItem('cv_sb_url') || 'https://qiciawmqnntvtuvvxvjz.supabase.co'; }
-function getSupabaseKey(){ return localStorage.getItem('cv_sb_key') || 'sb_publishable_N42XZ-gbgqQf2E3yX8AT1g_cOd6Gazu'; }
+// -- RUNTIME CONFIG (keys served from Netlify env vars, never in source) ----
+let _runtimeConfig = null;
+
+async function loadConfig(){
+  if(_runtimeConfig) return _runtimeConfig;
+  try{
+    const resp = await fetch('/.netlify/functions/config');
+    if(resp.ok){
+      _runtimeConfig = await resp.json();
+      // Cache in session storage so we don't fetch every page load
+      sessionStorage.setItem('cv_config', JSON.stringify(_runtimeConfig));
+    }
+  } catch(e){
+    // Fallback to session cache if function unreachable
+    const cached = sessionStorage.getItem('cv_config');
+    if(cached) _runtimeConfig = JSON.parse(cached);
+  }
+  return _runtimeConfig;
+}
+
+function getSupabaseUrl(){
+  // Priority: runtime config > localStorage override > empty
+  return (_runtimeConfig && _runtimeConfig.supabaseUrl) ||
+         localStorage.getItem('cv_sb_url') || '';
+}
+
+function getSupabaseKey(){
+  return (_runtimeConfig && _runtimeConfig.supabaseKey) ||
+         localStorage.getItem('cv_sb_key') || '';
+}
+
 function isSupabaseConnected(){ return !!(getSupabaseUrl() && getSupabaseKey()); }
 let syncInProgress = false;
 let pendingSync = false;
@@ -1334,10 +1367,10 @@ async function submitLotListing(){
 </AddItemRequest>`;
 
   try{
-    const resp = await fetch('https://api.ebay.com/ws/api.dll',{
-      method:'POST',
-      headers:{'Content-Type':'text/xml','X-EBAY-API-COMPATIBILITY-LEVEL':'967','X-EBAY-API-CALL-NAME':'AddItem','X-EBAY-API-SITEID':'0','X-EBAY-API-APP-NAME':getEbayAppId()},
-      body: xml
+    const resp = await fetch('/.netlify/functions/ebay-api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call_name: 'AddItem', app_id: getEbayAppId(), xml_body: xml })
     });
     const text = await resp.text();
     const itemIdMatch = text.match(/<ItemID>(\d+)<\/ItemID>/);
@@ -1538,8 +1571,6 @@ async function uploadImageToEbay(base64DataUrl){
   if(!base64DataUrl) return null;
   const token = getEbayToken();
   if(!token) return null;
-
-  // Strip data URL prefix
   const base64 = base64DataUrl.split(',')[1];
   if(!base64) return null;
 
@@ -1551,16 +1582,10 @@ async function uploadImageToEbay(base64DataUrl){
   <PictureData>${base64}</PictureData>
 </UploadSiteHostedPicturesRequest>`;
 
-    const resp = await fetch('https://api.ebay.com/ws/api.dll',{
-      method:'POST',
-      headers:{
-        'Content-Type':'text/xml',
-        'X-EBAY-API-COMPATIBILITY-LEVEL':'967',
-        'X-EBAY-API-CALL-NAME':'UploadSiteHostedPictures',
-        'X-EBAY-API-SITEID':'0',
-        'X-EBAY-API-APP-NAME': getEbayAppId(),
-      },
-      body: xml
+    const resp = await fetch('/.netlify/functions/ebay-api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call_name: 'UploadSiteHostedPictures', app_id: getEbayAppId(), xml_body: xml })
     });
     const text = await resp.text();
     const urlMatch = text.match(/<FullURL>(.*?)<\/FullURL>/);
@@ -1745,7 +1770,9 @@ function renderEbayModalContent(c){
     {key:'poor', label:'Poor', sub:'Heavy wear'},
   ].map(o=>`<div class="condition-btn${s.condition===o.key?' selected':''}" onclick="setModalCondition('${o.key}',this)">${o.label}<br><span style="font-size:9px;opacity:.7">${o.sub}</span></div>`).join('');
 
-  const durations = [3,5,7,10].map(d=>`<div class="duration-btn${s.duration===d?' selected':''}" onclick="setModalDuration(${d},this)">${d} days</div>`).join('');
+  const durations = s.type === 'auction'
+    ? [3,5,7,10].map(d=>`<div class="duration-btn${s.duration===d?' selected':''}" onclick="setModalDuration(${d},this)">${d} days</div>`).join('')
+    : `<div class="duration-btn selected" style="grid-column:1/-1;cursor:default">Good 'Til Cancelled <span style="opacity:.6;font-size:10px">(eBay standard for fixed price)</span></div>`;
 
   const priceSection = s.type === 'auction'
     ? `<label class="form-label">Starting bid</label><input class="form-input" type="number" id="modalStartPrice" value="${s.startPrice}" min="0.99" step="0.01" oninput="ebayListingState.startPrice=this.value">
@@ -1901,16 +1928,10 @@ async function submitEbayListing(){
 </AddItemRequest>`;
 
   try{
-    const resp = await fetch('https://api.ebay.com/ws/api.dll',{
-      method:'POST',
-      headers:{
-        'Content-Type':'text/xml',
-        'X-EBAY-API-COMPATIBILITY-LEVEL':'967',
-        'X-EBAY-API-CALL-NAME':'AddItem',
-        'X-EBAY-API-SITEID':'0',
-        'X-EBAY-API-APP-NAME': getEbayAppId(),
-      },
-      body: xml
+    const resp = await fetch('/.netlify/functions/ebay-api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call_name: 'AddItem', app_id: getEbayAppId(), xml_body: xml })
     });
     const text = await resp.text();
     const itemIdMatch = text.match(/<ItemID>(\d+)<\/ItemID>/);
