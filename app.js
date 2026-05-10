@@ -671,6 +671,7 @@ function openDetail(id){
   document.getElementById('detailTitle').textContent=c.player||'Card Detail';
   document.getElementById('detailHotIcon').textContent=isHot?'🔥':'';
   const imgSrc = c.imgData || c.cloudImgUrl || null;
+  console.log('openDetail imgSrc:', imgSrc ? imgSrc.substring(0,40)+'...('+imgSrc.length+'chars)' : 'NULL', '| imgData:', !!c.imgData, '| cloudImgUrl:', !!c.cloudImgUrl);
   const img=imgSrc?`<img src="${imgSrc}" alt="">`:'<div class="detail-img-placeholder">🃏</div>';
   const hotBox=isHot&&hotInfo?`<div class="hot-alert-box"><div class="hot-alert-title">🔥 This card is HOT right now</div><div class="hot-alert-body"><strong>${hotInfo.reason}</strong> — ${hotInfo.news}${hotInfo.sellWindow?'<br><br><strong>Sell window:</strong> '+hotInfo.sellWindow:''}</div></div>`:'';
   const fields=[['Player',c.player],['Team',c.team],['Sport',c.sport],['Year',c.year],['Brand',c.brand],['Set',c.set],['Parallel',c.parallel],['Numbered',c.numbered],['Rookie',c.rookie?'Yes':null],['Auto',c.auto?'Yes':null],['Relic',c.relic?'Yes':null],['Grade',c.grade],['Condition',c.condition]]
@@ -1221,9 +1222,17 @@ function saveManualCard(){
 
   // Compress image before saving if present
   if(manualImgData){
+    console.log('manualImgData present, length:', manualImgData.length, 'type:', manualImgData.substring(0,30));
     compressImage(manualImgData, 200).then(compressed => {
-      card.imgData = compressed || manualImgData;
+      const finalImg = compressed || manualImgData;
+      console.log('compressed length:', finalImg.length);
+      card.imgData = finalImg;
       cards.push(card);
+      localStorage.setItem('cv_cards', JSON.stringify(cards));
+      // verify it saved
+      const saved = JSON.parse(localStorage.getItem('cv_cards'));
+      const savedCard = saved.find(x=>x.id===card.id);
+      console.log('saved card imgData:', savedCard?.imgData ? savedCard.imgData.substring(0,30)+'...('+savedCard.imgData.length+'chars)' : 'NULL');
       save();
       updateStats();
       renderGrid();
@@ -1232,6 +1241,7 @@ function saveManualCard(){
       openDetail(card.id);
     });
   } else {
+    console.log('No image — saving without photo');
     cards.push(card);
     save();
     updateStats();
