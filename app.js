@@ -1962,7 +1962,15 @@ function openEbayModal(cardId){
   ebayListingState.duration = parseInt(localStorage.getItem('cv_default_duration')||'5');
   ebayListingState.price = c.priceMid || c.priceMin || 10;
   ebayListingState.startPrice = Math.max(1, Math.round((c.priceMin||5) * 0.7));
-  ebayListingState.condition = c.grade ? 'graded' : 'near_mint';
+
+  // Auto-detect condition from card
+  const cond = c.condition || c.grade || '';
+  if(cond.includes('PSA')||cond.includes('BGS')||cond.includes('SGC')) ebayListingState.condition = 'graded';
+  else if(cond.toLowerCase().includes('near mint')||cond.toLowerCase().includes('gem')) ebayListingState.condition = 'near_mint';
+  else if(cond.toLowerCase().includes('excellent')) ebayListingState.condition = 'excellent';
+  else if(cond.toLowerCase().includes('very good')) ebayListingState.condition = 'very_good';
+  else if(cond.toLowerCase().includes('poor')) ebayListingState.condition = 'poor';
+  else ebayListingState.condition = 'near_mint';
 
   document.getElementById('ebayModal').classList.remove('hidden');
   renderEbayModalContent(c);
@@ -1980,58 +1988,72 @@ document.getElementById('ebayModal').addEventListener('click', function(e){
 function renderEbayModalContent(c){
   const s = ebayListingState;
   const connected = isEbayConnected();
-  const connWarning = !connected ? `<div style="background:rgba(255,124,58,.1);border:1px solid rgba(255,124,58,.3);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:12px;color:var(--orange)"> eBay not connected  go to Settings to add your credentials. You can still preview the listing.</div>` : '';
+  const connWarning = !connected ? `<div style="background:rgba(255,124,58,.1);border:1px solid rgba(255,124,58,.3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--orange)">⚠ eBay not connected — go to Settings. You can still preview.</div>` : '';
 
   const conditionOptions = [
-    {key:'near_mint', label:'Near Mint or Better', sub:'Fresh from pack, 1-3 soft corners'},
-    {key:'excellent', label:'Excellent', sub:'Light wear, rough edges, minor chipping'},
-    {key:'very_good', label:'Very Good', sub:'Moderate-heavy wear, creases possible'},
-    {key:'poor', label:'Poor', sub:'Extreme wear, torn edges, stains'},
-    {key:'graded', label:'Graded', sub:'PSA / BGS / SGC slab'},
-  ].map(o=>`<div class="condition-btn${s.condition===o.key?' selected':''}" onclick="setModalCondition('${o.key}',this)">${o.label}<br><span style="font-size:9px;opacity:.7">${o.sub}</span></div>`).join('');
+    {key:'near_mint', label:'Near Mint or Better', sub:'Fresh from pack'},
+    {key:'excellent', label:'Excellent', sub:'Light wear'},
+    {key:'very_good', label:'Very Good', sub:'Moderate wear'},
+    {key:'poor', label:'Poor', sub:'Heavy wear'},
+    {key:'graded', label:'Graded', sub:'PSA/BGS/SGC slab'},
+  ].map(o=>`<div class="condition-btn${s.condition===o.key?' selected':''}" onclick="setModalCondition('${o.key}',this)" style="font-size:11px;padding:8px 6px">${o.label}<br><span style="font-size:9px;opacity:.6">${o.sub}</span></div>`).join('');
 
   const durations = s.type === 'auction'
-    ? [3,5,7,10].map(d=>`<div class="duration-btn${s.duration===d?' selected':''}" onclick="setModalDuration(${d},this)">${d} days</div>`).join('')
-    : `<div class="duration-btn selected" style="grid-column:1/-1;cursor:default">Good 'Til Cancelled <span style="opacity:.6;font-size:10px">(eBay standard for fixed price)</span></div>`;
+    ? [3,5,7,10].map(d=>`<div class="duration-btn${s.duration===d?' selected':''}" onclick="setModalDuration(${d},this)">${d}d</div>`).join('')
+    : `<div class="duration-btn selected" style="grid-column:1/-1;cursor:default;font-size:11px">Good 'Til Cancelled</div>`;
 
   const priceSection = s.type === 'auction'
-    ? `<label class="form-label">Starting bid</label><input class="form-input" type="number" id="modalStartPrice" value="${s.startPrice}" min="0.99" step="0.01" oninput="ebayListingState.startPrice=this.value">
-       <label class="form-label">Buy It Now price (optional)</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01" oninput="ebayListingState.price=this.value">`
-    : `<label class="form-label">Buy It Now price</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01" oninput="ebayListingState.price=this.value">`;
+    ? `<div class="form-row"><div><label class="form-label">Starting bid</label><input class="form-input" type="number" id="modalStartPrice" value="${s.startPrice}" min="0.99" step="0.01"></div><div><label class="form-label">BIN (optional)</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01"></div></div>`
+    : `<label class="form-label">Buy It Now price</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01">`;
+
+  // Required fields review — highlight missing ones
+  const reqField = (label, value, fieldId, placeholder) => {
+    const missing = !value;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:${missing?'rgba(224,92,92,.08)':'var(--surface2)'};border:1px solid ${missing?'rgba(224,92,92,.3)':'var(--border)'};margin-bottom:5px">
+      <span style="font-size:11px;color:var(--text2);width:90px;flex-shrink:0">${label}${missing?` <span style="color:var(--red)">*</span>`:''}</span>
+      <input style="flex:1;background:transparent;border:none;color:${missing?'var(--red)':'var(--text)'};font-size:12px;font-family:'DM Mono',monospace;outline:none" 
+        id="req_${fieldId}" value="${value||''}" placeholder="${missing?'⚠ Required':placeholder||''}" 
+        onchange="updateCardField('${c.id}','${fieldId}',this.value)">
+    </div>`;
+  };
+
+  const sportLeagueMap = {Baseball:'MLB',Basketball:'NBA',Football:'NFL',Hockey:'NHL',Soccer:'MLS'};
 
   document.getElementById('ebayModalContent').innerHTML = `
-    <div class="modal-title">List on eBay</div>
-    <div class="modal-sub">${c.player||'Card'}  ${c.year||''} ${c.brand||''}</div>
+    <div class="modal-title">Review & List on eBay</div>
+    <div class="modal-sub" style="margin-bottom:12px">${c.player||'Card'} · ${c.year||''} ${c.brand||''}</div>
     ${connWarning}
 
-    <div class="listing-type-row">
-      <div class="listing-type-btn${s.type==='auction'?' selected':''}" onclick="setModalType('auction')">
-        <div class="type-icon"></div>
-        <div class="type-label">Auction</div>
-        <div class="type-sub">Let buyers bid</div>
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Required fields <span style="color:var(--red)">*</span> = missing</div>
+
+    ${reqField('Player', c.player, 'player', 'e.g. Patrick Mahomes')}
+    ${reqField('Brand/Manuf.', c.brand, 'brand', 'e.g. Panini Prizm')}
+    ${reqField('Year/Season', c.year, 'year', 'e.g. 2024')}
+    ${reqField('Team', c.team, 'team', 'e.g. Chiefs')}
+    ${reqField('Set', c.set||c.brand, 'set', 'e.g. Prizm Draft')}
+    ${reqField('Parallel', c.parallel||'Base', 'parallel', 'e.g. Gold, Silver')}
+    ${reqField('Grade/Cond.', c.grade||c.condition, 'grade', 'e.g. PSA 9, Near Mint')}
+
+    <div style="margin-top:12px;margin-bottom:6px">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Listing details</div>
+      <div class="listing-type-row" style="margin-bottom:10px">
+        <div class="listing-type-btn${s.type==='auction'?' selected':''}" onclick="setModalType('auction')"><div class="type-icon">🔨</div><div class="type-label">Auction</div></div>
+        <div class="listing-type-btn${s.type==='bin'?' selected':''}" onclick="setModalType('bin')"><div class="type-icon">💰</div><div class="type-label">Buy It Now</div></div>
       </div>
-      <div class="listing-type-btn${s.type==='bin'?' selected':''}" onclick="setModalType('bin')">
-        <div class="type-icon"></div>
-        <div class="type-label">Buy It Now</div>
-        <div class="type-sub">Set your price</div>
-      </div>
+      ${priceSection}
+      <label class="form-label" style="margin-top:10px">Duration</label>
+      <div class="duration-grid">${durations}</div>
+      <label class="form-label" style="margin-top:10px">Condition</label>
+      <div class="condition-grid">${conditionOptions}</div>
     </div>
 
-    ${priceSection}
-
-    <label class="form-label">Duration</label>
-    <div class="duration-grid">${durations}</div>
-
-    <label class="form-label">Condition</label>
-    <div class="condition-grid">${conditionOptions}</div>
-
-    <div class="ebay-preview-box">
-      <div class="ebay-preview-title">eBay title preview</div>
-      <div class="ebay-preview-text">${c.ebayTitle||''}</div>
+    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;margin-top:12px;margin-bottom:14px">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px">eBay title preview</div>
+      <div style="font-size:12px;color:var(--gold);font-weight:500;line-height:1.4" id="ebayTitlePreview">${c.ebayTitle||'—'}</div>
     </div>
 
     <button class="list-btn" onclick="submitEbayListing()">
-      <span class="list-btn-icon"></span> ${connected ? 'Post to eBay' : 'Copy listing (eBay not connected)'}
+      <span class="list-btn-icon">🛒</span> ${connected ? 'Post to eBay' : 'Copy listing (eBay not connected)'}
     </button>
     <button class="cancel-btn" onclick="closeEbayModal()">Cancel</button>`;
 }
@@ -2050,8 +2072,22 @@ function setModalDuration(days, el){
 
 function setModalCondition(key, el){
   ebayListingState.condition = key;
-  document.querySelectorAll('.condition-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('#ebayModal .condition-btn').forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
+}
+
+function updateCardField(id, field, value){
+  const idx = cards.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  cards[idx][field] = value || null;
+  const c = cards[idx];
+  cards[idx].ebayTitle = generateEbayTitle({
+    player:c.player, year:c.year, brand:c.brand, parallel:c.parallel,
+    numbered:c.numbered, rookie:c.rookie, auto:c.auto, grade:c.grade, team:c.team
+  });
+  save();
+  const titleEl = document.getElementById('ebayTitlePreview');
+  if(titleEl) titleEl.textContent = cards[idx].ebayTitle || '—';
 }
 
 // eBay condition ID map
@@ -2087,6 +2123,18 @@ async function submitEbayListing(){
 
   const s = ebayListingState;
   const token = getEbayToken();
+
+  // Auto-set condition from card if not chosen in modal
+  if(!s.condition){
+    const cond = c.condition || c.grade || '';
+    if(cond.includes('PSA')||cond.includes('BGS')||cond.includes('SGC')) s.condition = 'graded';
+    else if(cond.toLowerCase().includes('near mint')||cond.toLowerCase().includes('gem')) s.condition = 'near_mint';
+    else if(cond.toLowerCase().includes('excellent')) s.condition = 'excellent';
+    else if(cond.toLowerCase().includes('very good')) s.condition = 'very_good';
+    else if(cond.toLowerCase().includes('poor')) s.condition = 'poor';
+    else s.condition = 'near_mint'; // safe default
+  }
+
   const condInfo = EBAY_CONDITIONS[s.condition] || EBAY_CONDITIONS.near_mint;
   const catId = EBAY_CATEGORIES[c.sport] || '261328';
   const isAuction = s.type === 'auction';
