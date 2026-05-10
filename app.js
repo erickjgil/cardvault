@@ -2256,6 +2256,7 @@ async function submitEbayListing(){
   </Item>
 </AddItemRequest>`;
 
+  console.log('eBay ConditionID being sent:', condInfo.id, '| key:', s.condition, '| category:', catId);
   try{
     const resp = await fetch('/.netlify/functions/ebay-api', {
       method: 'POST',
@@ -2263,6 +2264,7 @@ async function submitEbayListing(){
       body: JSON.stringify({ call_name: 'AddItem', app_id: getEbayAppId(), xml_body: xml })
     });
     const text = await resp.text();
+    console.log('eBay AddItem response:', text.substring(0, 800));
     const itemIdMatch = text.match(/<ItemID>(\d+)<\/ItemID>/);
     const ackMatch = text.match(/<Ack>(\w+)<\/Ack>/);
     const errMatch = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/);
