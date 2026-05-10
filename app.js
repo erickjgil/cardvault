@@ -1549,7 +1549,7 @@ async function submitLotListing(){
     ${isAuction && binPrice ? `<BuyItNowPrice>${binPrice}</BuyItNowPrice>` : ''}
     ${!isAuction ? `<BuyItNowPrice>${binPrice}</BuyItNowPrice>` : ''}
     <CategoryMappingAllowed>true</CategoryMappingAllowed>
-    <ConditionID>3000</ConditionID>
+    <ConditionID>400010</ConditionID>
     <Country>US</Country><Currency>USD</Currency>
     <DispatchTimeMax>3</DispatchTimeMax>
     <ListingDuration>${isAuction?'Days_'+lotDuration:'GTC'}</ListingDuration>
@@ -2136,6 +2136,14 @@ async function submitEbayListing(){
   }
 
   const condInfo = EBAY_CONDITIONS[s.condition] || EBAY_CONDITIONS.near_mint;
+  console.log('Condition state:', s.condition, '→ condInfo:', JSON.stringify(condInfo));
+  // Safety check - ensure we always have a valid condition ID
+  if(!condInfo || !condInfo.id){
+    showToast('Please select a condition before posting');
+    listBtn.disabled=false;
+    listBtn.innerHTML='<span>🛒</span> Post to eBay';
+    return;
+  }
   const catId = EBAY_CATEGORIES[c.sport] || '261328';
   const isAuction = s.type === 'auction';
 
