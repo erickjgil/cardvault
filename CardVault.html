@@ -2846,16 +2846,25 @@ async function uploadImageToEbay(base64DataUrl){
   if(!base64DataUrl) return null;
   const token = getEbayToken();
   if(!token){ console.warn('uploadImageToEbay: no token'); return null; }
-
-  // Already a hosted URL — return as-is
   if(base64DataUrl.startsWith('http')) return base64DataUrl;
 
-  const base64 = base64DataUrl.split(',')[1];
-  const mime = base64DataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-  if(!base64){ console.warn('uploadImageToEbay: could not extract base64'); return null; }
+  // Compress to max 50KB — smaller = less chance of corruption in transit
+  const compressed = await compressImage(base64DataUrl, 50);
+  const finalUrl = compressed || base64DataUrl;
 
-  // Build the auth token XML to include in the multipart
-  const tokenXml = `<?xml version="1.0" encoding="utf-8"?><UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents"><RequesterCredentials><eBayAuthToken>${token}</eBayAuthToken></RequesterCredentials><PictureSet>Supersize</PictureSet></UploadSiteHostedPicturesRequest>`;
+  const base64 = finalUrl.split(',')[1];
+  const mime = finalUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+  if(!base64){ console.warn('uploadImageToEbay: bad data URL'); return null; }
+
+  console.log('Uploading to eBay — base64 length:', base64.length, 'mime:', mime);
+
+  // Verify base64 is clean
+  try{
+    const test = atob(base64.substring(0, 100));
+    if(!test) throw new Error('empty');
+  } catch(e){
+    console.warn('Invalid base64 data'); return null;
+  }
 
   try{
     const text = await ebayImageUpload(base64, mime, token, getEbayAppId());
