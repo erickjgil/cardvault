@@ -1783,30 +1783,30 @@ async function uploadImageToEbay(base64DataUrl){
   const token = getEbayToken();
   if(!token){ console.warn('uploadImageToEbay: no token'); return null; }
 
-  // Handle both base64 data URLs and regular https URLs
-  if(base64DataUrl.startsWith('http')){
-    // Already a hosted URL — return as-is
-    return base64DataUrl;
-  }
+  // Already a hosted URL — return as-is
+  if(base64DataUrl.startsWith('http')) return base64DataUrl;
 
   const base64 = base64DataUrl.split(',')[1];
+  const mime = base64DataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
   if(!base64){ console.warn('uploadImageToEbay: could not extract base64'); return null; }
 
-  try{
-    const xml = `<?xml version="1.0" encoding="utf-8"?>
-<UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-  <RequesterCredentials><eBayAuthToken>${token}</eBayAuthToken></RequesterCredentials>
-  <PictureSet>Supersize</PictureSet>
-  <PictureData>${base64}</PictureData>
-</UploadSiteHostedPicturesRequest>`;
+  // Build the auth token XML to include in the multipart
+  const tokenXml = `<?xml version="1.0" encoding="utf-8"?><UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents"><RequesterCredentials><eBayAuthToken>${token}</eBayAuthToken></RequesterCredentials><PictureSet>Supersize</PictureSet></UploadSiteHostedPicturesRequest>`;
 
+  try{
     const resp = await fetch('/.netlify/functions/ebay-api', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ call_name: 'UploadSiteHostedPictures', app_id: getEbayAppId(), xml_body: xml })
+      body: JSON.stringify({
+        call_name: 'UploadPicture',
+        app_id: getEbayAppId(),
+        image_base64: base64,
+        image_mime: mime,
+        xml_body: tokenXml,
+      })
     });
     const text = await resp.text();
-    console.log('eBay image upload response:', text.substring(0, 500));
+    console.log('eBay image upload response:', text.substring(0, 300));
     const urlMatch = text.match(/<FullURL>(.*?)<\/FullURL>/);
     const errMatch = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/);
     if(urlMatch) return urlMatch[1];
