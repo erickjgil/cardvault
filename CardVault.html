@@ -1,0 +1,3432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CardVault">
+<meta name="theme-color" content="#0f0f11">
+<title>CardVault — Sports Card Catalog</title>
+<link rel="manifest" href="manifest.json">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0f0f11;--surface:#18181c;--surface2:#222228;--surface3:#2a2a32;
+  --border:#333340;--border2:#44444f;
+  --text:#f0f0f5;--text2:#9999aa;--text3:#66667a;
+  --gold:#f5c542;--gold2:#e8a500;--blue:#4da6ff;--blue2:#1a7fff;
+  --green:#4caf7d;--red:#e05c5c;--orange:#ff7c3a;--orange2:#cc5500;
+  --radius:10px;--radius-lg:14px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+
+/* TOP BAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;padding-top:max(14px,env(safe-area-inset-top))}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;background:var(--red);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 16px var(--red-glow)}
+.logo-text{font-size:16px;font-weight:700;letter-spacing:-.5px;color:var(--text)}
+.logo-sub{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.5px;text-transform:uppercase}
+.stats-bar{display:flex;gap:18px}
+.stat-item{text-align:center}
+.stat-num{font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red2)}
+.stat-lbl{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-top:1px}
+.main-content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.view{display:none;flex-direction:column;height:100%;overflow:hidden}
+.view.active{display:flex}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;gap:8px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg)}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:6px 14px;border-radius:50px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);color:var(--text2);white-space:nowrap;transition:all .2s;background:transparent}
+.tab:active{opacity:.7}
+.tab.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 0 12px var(--red-glow)}
+.upload-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:50px;background:var(--red);color:#fff;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif;flex-shrink:0;white-space:nowrap;box-shadow:0 0 14px var(--red-glow);transition:opacity .15s}
+.upload-btn:active{opacity:.8}
+
+/* CARDS GRID */
+.cards-scroll{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;background:var(--bg)}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:12px}
+.card-thumb{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;position:relative;transition:border-color .2s,box-shadow .2s}
+.card-thumb:active{transform:scale(.97)}
+.card-thumb.hot-card{border-color:var(--red);box-shadow:0 0 16px var(--red-glow)}
+.card-img-wrap{height:112px;display:flex;align-items:center;justify-content:center;background:var(--surface2);position:relative;overflow:hidden}
+.card-img-wrap img{width:100%;height:100%;object-fit:cover}
+.card-img-placeholder{font-size:32px;opacity:.2}
+.parallel-badge{position:absolute;top:6px;right:6px;font-size:9px;font-weight:600;padding:2px 8px;border-radius:50px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.3px}
+.badge-gold{background:rgba(255,200,50,.12);color:#ffc832;border:1px solid rgba(255,200,50,.3)}
+.badge-silver{background:rgba(160,160,160,.12);color:#aaa;border:1px solid rgba(160,160,160,.25)}
+.badge-base{background:var(--red-dim);color:var(--red3);border:1px solid rgba(224,25,42,.25)}
+.badge-rc{position:absolute;top:6px;left:6px;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:50px}
+.fire-badge{position:absolute;bottom:6px;right:6px;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:50px;box-shadow:0 0 8px var(--red-glow)}
+.card-info{padding:10px 12px}
+.card-name{font-size:12px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-meta{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
+.card-chips{display:flex;gap:3px;flex-wrap:wrap}
+.chip{font-size:9px;padding:2px 6px;border-radius:50px;background:var(--surface2);color:var(--text3);font-family:'DM Mono',monospace;border:1px solid var(--border)}
+.empty-state{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--text3)}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.3}
+.empty-state h3{font-size:14px;font-weight:600;margin-bottom:6px;color:var(--text2)}
+.empty-state p{font-size:12px;line-height:1.6}
+
+/* HOT VIEW */
+.hot-scroll{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;background:var(--bg)}
+.hot-header{background:linear-gradient(135deg,rgba(224,25,42,.15),rgba(224,25,42,.05));border:1px solid rgba(224,25,42,.3);border-radius:var(--radius-xl);padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.hot-header-icon{font-size:28px;flex-shrink:0}
+.hot-header-text h3{font-size:14px;font-weight:700;color:var(--red2);margin-bottom:3px}
+.hot-header-text p{font-size:11px;color:var(--text2);line-height:1.5}
+.refresh-btn{margin-left:auto;padding:8px 14px;border-radius:50px;border:1px solid rgba(224,25,42,.4);background:transparent;color:var(--red2);font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;flex-shrink:0}
+.hot-section-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;margin-top:4px}
+.hot-card-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:10px;cursor:pointer;display:flex;gap:12px;align-items:flex-start;transition:border-color .2s}
+.hot-card-row:active{background:var(--surface2)}
+.hot-card-row.in-collection{border-left:3px solid var(--red)}
+.hot-thumb{width:48px;height:62px;border-radius:8px;overflow:hidden;flex-shrink:0;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.7}
+.hot-card-body{flex:1;min-width:0}
+.hot-card-name{font-size:13px;font-weight:700;margin-bottom:3px}
+.hot-card-reason{font-size:11px;color:var(--red2);font-weight:600;margin-bottom:5px}
+.hot-card-news{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:7px}
+.hot-card-meta{display:flex;gap:5px;flex-wrap:wrap}
+.hot-chip{font-size:10px;padding:2px 9px;border-radius:50px;font-family:'DM Mono',monospace}
+.chip-up{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.chip-hot{background:var(--red-dim);color:var(--red3);border:1px solid rgba(224,25,42,.25)}
+.chip-neutral{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.own-badge{font-size:9px;padding:2px 8px;border-radius:50px;background:var(--red-dim);color:var(--red3);border:1px solid rgba(224,25,42,.25);font-weight:600;flex-shrink:0;align-self:flex-start;margin-top:2px;white-space:nowrap}
+.hot-loading{text-align:center;padding:40px 20px}
+.hot-spinner{width:32px;height:32px;border:2px solid var(--border2);border-top-color:var(--red);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hot-loading p{font-size:13px;color:var(--text2)}
+.hot-updated{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-align:right;margin-bottom:12px}
+
+/* DETAIL VIEW */
+.detail-header-bar{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
+.back-btn{background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:7px 16px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.back-btn:active{background:var(--surface2)}
+.detail-header-bar h2{font-size:15px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-scroll{flex:1;overflow-y:auto;padding:18px;-webkit-overflow-scrolling:touch;background:var(--bg)}
+.detail-img-wrap{width:100%;max-width:240px;margin:0 auto 18px;display:block;border-radius:var(--radius-lg);overflow:hidden;aspect-ratio:3/4;background:var(--surface);border:1px solid var(--border)}
+.detail-img-wrap img{width:100%;height:100%;object-fit:cover}
+.detail-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;opacity:.15}
+.hot-alert-box{background:linear-gradient(135deg,rgba(224,25,42,.1),rgba(224,25,42,.04));border:1px solid rgba(224,25,42,.3);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:18px}
+.hot-alert-title{font-size:12px;font-weight:700;color:var(--red2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.hot-alert-body{font-size:12px;color:var(--text2);line-height:1.6}
+.section{margin-bottom:18px}
+.section-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.fields{display:grid;gap:6px}
+.field{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border)}
+.field-key{font-size:12px;color:var(--text2)}
+.field-val{font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);text-align:right;max-width:60%}
+.ebay-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.ebay-title-text{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.4}
+.ebay-desc{font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:14px;border-top:1px solid var(--border);padding-top:12px}
+.price-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:12px 14px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)}
+.price-label{font-size:11px;color:var(--text2);margin-bottom:2px}
+.price-range{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+.price-val{font-size:24px;font-weight:800;color:var(--green);font-family:'DM Mono',monospace}
+.list-btn{width:100%;padding:14px;border-radius:50px;background:var(--red);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;box-shadow:0 0 20px var(--red-glow);transition:opacity .15s;letter-spacing:-.2px}
+.list-btn:active{opacity:.85}
+.list-btn:disabled{opacity:.4;cursor:not-allowed}
+.list-btn-icon{font-size:16px}
+.copy-btn{width:100%;padding:13px;border-radius:50px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:10px;transition:all .15s}
+.copy-btn:active{background:var(--red);color:#fff;border-color:var(--red)}
+.delete-btn{width:100%;padding:11px;border-radius:50px;border:1px solid rgba(224,25,42,.2);background:transparent;color:var(--red);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:32px;transition:background .15s}
+.delete-btn:active{background:var(--red-dim)}
+
+/* SETTINGS */
+.settings-scroll{flex:1;overflow-y:auto;padding:18px;-webkit-overflow-scrolling:touch;background:var(--bg)}
+.settings-section{margin-bottom:24px}
+.settings-header{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--surface);border-radius:var(--radius-lg);margin-bottom:8px;border:1px solid var(--border)}
+.settings-row-label{font-size:14px;font-weight:600}
+.settings-row-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.settings-btn{padding:8px 18px;border-radius:50px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.settings-btn:active{background:var(--surface3)}
+.settings-btn.danger{color:var(--red);border-color:rgba(224,25,42,.25)}
+.api-note{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:10px}
+.api-note a{color:var(--red2);text-decoration:none}
+.api-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;margin-top:8px;transition:border-color .15s}
+.api-input:focus{outline:none;border-color:var(--red)}
+.save-btn{width:100%;padding:13px;border-radius:50px;background:var(--red);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:'Inter',sans-serif;margin-top:10px;box-shadow:0 0 16px var(--red-glow);transition:opacity .15s}
+.save-btn:active{opacity:.85}
+
+/* BOTTOM NAV */
+.bottom-nav{display:flex;border-top:1px solid var(--border);background:var(--bg);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 8px;cursor:pointer;color:var(--text3);transition:color .15s;position:relative}
+.nav-item.active{color:var(--red2)}
+.nav-item.fire-nav.active{color:var(--red2)}
+.nav-icon{font-size:20px;line-height:1}
+.nav-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.nav-dot{position:absolute;top:10px;right:calc(50% - 14px);width:7px;height:7px;background:var(--red);border-radius:50%;border:1.5px solid var(--bg);display:none;box-shadow:0 0 6px var(--red-glow)}
+.nav-dot.show{display:block}
+
+/* ANALYZING */
+.analyzing-overlay{position:fixed;inset:0;background:rgba(8,8,8,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(8px)}
+.analyzing-overlay.hidden{display:none}
+.spinner{width:40px;height:40px;border:2px solid var(--border2);border-top-color:var(--red);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px}
+.analyzing-overlay h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.analyzing-overlay p{font-size:13px;color:var(--text2)}
+#fileInput{display:none}
+.toast{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface);border:1px solid var(--border2);border-radius:50px;padding:10px 22px;font-size:13px;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:200;white-space:nowrap;max-width:90vw;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.5)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(8,8,8,.85);z-index:300;display:flex;align-items:flex-end;backdrop-filter:blur(8px)}
+.modal-overlay.hidden{display:none}
+.modal-sheet{background:var(--surface);border-radius:28px 28px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-height:92vh;overflow-y:auto;border-top:1px solid var(--border2)}
+.modal-drag{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 20px}
+.modal-title{font-size:18px;font-weight:800;margin-bottom:4px;letter-spacing:-.4px}
+.modal-sub{font-size:12px;color:var(--text2);margin-bottom:20px}
+.form-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;margin-top:14px;display:block}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;transition:border-color .15s}
+.form-input:focus{outline:none;border-color:var(--red)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.listing-type-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.listing-type-btn{padding:14px;border-radius:var(--radius-lg);border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;transition:all .2s}
+.listing-type-btn.selected{border-color:var(--red);background:var(--red-dim);box-shadow:0 0 12px var(--red-glow)}
+.type-icon{font-size:22px;margin-bottom:5px}
+.type-label{font-size:13px;font-weight:700;color:var(--text)}
+.type-sub{font-size:10px;color:var(--text2);margin-top:2px}
+.duration-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:4px}
+.duration-btn{padding:9px 4px;border-radius:50px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;text-align:center;transition:all .15s;font-family:'Inter',sans-serif}
+.duration-btn.selected{border-color:var(--red);color:var(--red2);background:var(--red-dim)}
+.condition-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.condition-btn{padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;text-align:center;transition:all .15s;font-family:'Inter',sans-serif}
+.condition-btn.selected{border-color:var(--green);color:var(--green);background:rgba(34,197,94,.08)}
+.ebay-preview-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:14px;margin-bottom:16px}
+.ebay-preview-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.ebay-preview-text{font-size:12px;color:var(--text);font-weight:500;line-height:1.4}
+.cancel-btn{width:100%;padding:13px;border-radius:50px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.cancel-btn:active{background:var(--surface2)}
+.ebay-connected{display:flex;align-items:center;gap:8px;padding:12px 14px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:var(--radius-lg);margin-bottom:12px}
+.ebay-connected-dot{width:8px;height:8px;background:var(--green);border-radius:50%;flex-shrink:0;box-shadow:0 0 6px rgba(34,197,94,.4)}
+.ebay-connected-text{font-size:12px;color:var(--green);font-weight:600}
+.ebay-disconnect-btn{background:transparent;border:1px solid rgba(224,25,42,.25);color:var(--red);font-size:11px;padding:5px 12px;border-radius:50px;cursor:pointer;font-family:'Inter',sans-serif;margin-left:auto}
+.ebay-connect-btn{width:100%;padding:13px;border-radius:50px;background:var(--red);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 0 16px var(--red-glow);transition:opacity .15s}
+.ebay-connect-btn:active{opacity:.85}
+.listing-success{text-align:center;padding:30px 20px}
+.listing-success-icon{font-size:52px;margin-bottom:14px}
+.listing-success h3{font-size:20px;font-weight:800;margin-bottom:8px;letter-spacing:-.4px}
+.listing-success p{font-size:13px;color:var(--text2);margin-bottom:22px;line-height:1.6}
+.view-listing-btn{display:inline-block;padding:13px 28px;border-radius:50px;background:var(--red);color:#fff;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:10px;border:none;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 0 16px var(--red-glow)}
+
+/* LOT MODE */
+.lot-mode-btn{display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:50px;background:var(--surface);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);font-family:'Inter',sans-serif;white-space:nowrap;transition:all .15s}
+.lot-mode-btn:active{border-color:var(--red);color:var(--red)}
+.card-thumb.lot-selectable{cursor:pointer}
+.card-thumb.lot-selected{border-color:var(--red);box-shadow:0 0 12px var(--red-glow)}
+.lot-check{position:absolute;top:6px;left:6px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 0 8px var(--red-glow)}
+.lot-check-empty{position:absolute;top:6px;left:6px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.5);border:1.5px solid rgba(255,255,255,.3);z-index:2}
+.lot-card-thumb{width:46px;height:60px;border-radius:8px;overflow:hidden;flex-shrink:0;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px;border:1.5px solid var(--red);position:relative}
+.lot-card-thumb img{width:100%;height:100%;object-fit:cover}
+.lot-card-remove{position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:var(--red);border-radius:50%;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--bg)}
+
+/* ADD CARD CHOICES */
+.add-choice-btn{display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;transition:border-color .2s}
+.add-choice-btn:active{border-color:var(--red)}
+.add-choice-icon{font-size:26px;flex-shrink:0;width:36px;text-align:center}
+.add-choice-body{flex:1}
+.add-choice-title{font-size:14px;font-weight:700;margin-bottom:2px}
+.add-choice-sub{font-size:11px;color:var(--text2);line-height:1.4}
+.add-choice-arrow{color:var(--text3);font-size:16px;flex-shrink:0}
+.sport-btn{padding:9px 4px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:16px;cursor:pointer;text-align:center;transition:all .15s;font-family:'Inter',sans-serif;line-height:1.3}
+.sport-btn.selected{border-color:var(--red);background:var(--red-dim);color:var(--text)}
+
+/* LIST VIEW */
+.cards-list{display:flex;flex-direction:column;gap:6px}
+.list-row{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;transition:border-color .15s}
+.list-row:active{border-color:var(--blue)}
+.list-row.hot-card{border-color:var(--orange)}
+.list-row.sold-card{opacity:.75}
+.list-thumb{width:36px;height:46px;border-radius:5px;overflow:hidden;flex-shrink:0;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:16px;opacity:.5}
+.list-thumb img{width:100%;height:100%;object-fit:cover;opacity:1}
+.list-body{flex:1;min-width:0}
+.list-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-meta{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.list-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.list-price{font-size:12px;font-weight:600;color:var(--green);font-family:'DM Mono',monospace}
+.list-chips{display:flex;gap:3px}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;padding-top:max(12px,env(safe-area-inset-top))}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:30px;height:30px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.logo-text{font-size:15px;font-weight:600;letter-spacing:-.3px}
+.logo-sub{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
+.stats-bar{display:flex;gap:16px}
+.stat-item{text-align:center}
+.stat-num{font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--gold)}
+.stat-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.main-content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.view{display:none;flex-direction:column;height:100%;overflow:hidden}
+.view.active{display:flex}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--surface)}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:5px 12px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;color:var(--text2);white-space:nowrap;transition:all .15s}
+.tab.active{background:var(--gold);color:#111}
+.upload-btn{display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--radius);background:var(--blue2);color:#fff;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'Sora',sans-serif;flex-shrink:0;white-space:nowrap}
+
+/* CARDS GRID */
+.cards-scroll{flex:1;overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card-thumb{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;position:relative}
+.card-thumb.hot-card{border-color:var(--orange);box-shadow:0 0 0 2px rgba(255,124,58,.2)}
+.card-thumb.sold-card{opacity:.75}
+.card-img-wrap{height:108px;display:flex;align-items:center;justify-content:center;background:var(--surface3);position:relative;overflow:hidden}
+.card-img-wrap img{width:100%;height:100%;object-fit:cover}
+.card-img-placeholder{font-size:32px;opacity:.3}
+.parallel-badge{position:absolute;top:5px;right:5px;font-size:9px;font-weight:600;padding:2px 7px;border-radius:20px;font-family:'DM Mono',monospace;text-transform:uppercase}
+.badge-gold{background:#f5c54230;color:var(--gold);border:1px solid var(--gold2)}
+.badge-silver{background:#aaa3;color:#ccc;border:1px solid #888}
+.badge-base{background:#4da6ff22;color:var(--blue);border:1px solid var(--blue2)}
+.badge-rc{position:absolute;top:5px;left:5px;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px}
+.fire-badge{position:absolute;bottom:5px;right:5px;background:linear-gradient(135deg,var(--orange),var(--red));color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+.card-info{padding:9px 10px}
+.card-name{font-size:12px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-meta{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.card-chips{display:flex;gap:3px;flex-wrap:wrap}
+.chip{font-size:9px;padding:2px 5px;border-radius:4px;background:var(--surface3);color:var(--text2);font-family:'DM Mono',monospace}
+.empty-state{grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-icon{font-size:36px;margin-bottom:10px;opacity:.5}
+.empty-state h3{font-size:14px;font-weight:500;margin-bottom:6px;color:var(--text2)}
+.empty-state p{font-size:12px;line-height:1.6}
+
+/* HOT VIEW */
+.hot-scroll{flex:1;overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch}
+.hot-header{background:linear-gradient(135deg,rgba(255,124,58,.12),rgba(224,92,92,.06));border:1px solid rgba(255,124,58,.25);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.hot-header-icon{font-size:26px;flex-shrink:0}
+.hot-header-text h3{font-size:14px;font-weight:600;color:var(--orange);margin-bottom:3px}
+.hot-header-text p{font-size:11px;color:var(--text2);line-height:1.5}
+.refresh-btn{margin-left:auto;padding:7px 12px;border-radius:8px;border:1px solid rgba(255,124,58,.4);background:transparent;color:var(--orange);font-size:11px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;flex-shrink:0}
+.hot-section-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;margin-top:4px}
+.hot-card-row{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;gap:12px;align-items:flex-start}
+.hot-card-row.in-collection{border-left:3px solid var(--orange)}
+.hot-thumb{width:48px;height:62px;border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.6}
+.hot-thumb img{width:100%;height:100%;object-fit:cover;opacity:1}
+.hot-card-body{flex:1;min-width:0}
+.hot-card-name{font-size:13px;font-weight:600;margin-bottom:3px}
+.hot-card-reason{font-size:11px;color:var(--orange);font-weight:500;margin-bottom:5px}
+.hot-card-news{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:7px}
+.hot-card-meta{display:flex;gap:5px;flex-wrap:wrap}
+.hot-chip{font-size:10px;padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace}
+.chip-up{background:rgba(76,175,125,.15);color:var(--green);border:1px solid rgba(76,175,125,.3)}
+.chip-hot{background:rgba(255,124,58,.12);color:var(--orange);border:1px solid rgba(255,124,58,.25)}
+.chip-neutral{background:var(--surface3);color:var(--text2);border:1px solid var(--border2)}
+.own-badge{font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(245,197,66,.12);color:var(--gold);border:1px solid rgba(245,197,66,.25);font-weight:600;flex-shrink:0;align-self:flex-start;margin-top:2px;white-space:nowrap}
+.hot-loading{text-align:center;padding:40px 20px}
+.hot-spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hot-loading p{font-size:13px;color:var(--text2)}
+.hot-updated{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-align:right;margin-bottom:12px}
+
+/* DETAIL VIEW */
+.detail-header-bar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.back-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:'Sora',sans-serif}
+.detail-header-bar h2{font-size:15px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-scroll{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
+.detail-img-wrap{width:100%;max-width:240px;margin:0 auto 16px;display:block;border-radius:var(--radius-lg);overflow:hidden;aspect-ratio:3/4;background:var(--surface2);border:1px solid var(--border2)}
+.detail-img-wrap img{width:100%;height:100%;object-fit:cover}
+.detail-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;opacity:.2}
+.hot-alert-box{background:linear-gradient(135deg,rgba(255,124,58,.1),rgba(224,92,92,.07));border:1px solid rgba(255,124,58,.3);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px}
+.hot-alert-title{font-size:12px;font-weight:600;color:var(--orange);margin-bottom:5px}
+.hot-alert-body{font-size:12px;color:var(--text2);line-height:1.6}
+.section{margin-bottom:16px}
+.section-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.fields{display:grid;gap:5px}
+.field{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:8px}
+.field-key{font-size:12px;color:var(--text2)}
+.field-val{font-size:12px;font-weight:500;font-family:'DM Mono',monospace;color:var(--text);text-align:right;max-width:60%}
+.ebay-box{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;margin-bottom:10px}
+.ebay-title-text{font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px;line-height:1.4}
+.ebay-desc{font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:12px;border-top:1px solid var(--border);padding-top:10px}
+.price-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:10px;background:var(--surface3);border-radius:8px}
+.price-label{font-size:11px;color:var(--text2);margin-bottom:2px}
+.price-range{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+.price-val{font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace}
+.copy-btn{width:100%;padding:12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface3);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:8px;transition:background .15s}
+.copy-btn:active{background:var(--gold);color:#111;border-color:var(--gold)}
+.delete-btn{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(224,92,92,.3);background:transparent;color:var(--red);font-size:12px;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:32px}
+
+/* SETTINGS */
+.settings-scroll{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
+.settings-section{margin-bottom:20px}
+.settings-header{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px;background:var(--surface2);border-radius:var(--radius);margin-bottom:6px}
+.settings-row-label{font-size:14px;font-weight:500}
+.settings-row-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.settings-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border2);background:var(--surface3);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif}
+.settings-btn.danger{color:var(--red);border-color:rgba(224,92,92,.3)}
+.api-note{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:10px}
+.api-note a{color:var(--blue);text-decoration:none}
+.api-input{width:100%;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;margin-top:8px}
+.api-input:focus{outline:none;border-color:var(--blue)}
+.save-btn{width:100%;padding:12px;border-radius:8px;background:var(--blue2);color:#fff;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:'Sora',sans-serif;margin-top:8px}
+
+/* BOTTOM NAV */
+.bottom-nav{display:flex;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 8px;cursor:pointer;color:var(--text3);transition:color .15s;position:relative}
+.nav-item.active{color:var(--gold)}
+.nav-item.fire-nav.active{color:var(--orange)}
+.nav-icon{font-size:20px;line-height:1}
+.nav-label{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.nav-dot{position:absolute;top:8px;right:calc(50% - 14px);width:7px;height:7px;background:var(--orange);border-radius:50%;border:1.5px solid var(--bg);display:none}
+.nav-dot.show{display:block}
+.analyzing-overlay{position:fixed;inset:0;background:rgba(15,15,17,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(6px)}
+.analyzing-overlay.hidden{display:none}
+.spinner{width:40px;height:40px;border:3px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px}
+.analyzing-overlay h3{font-size:15px;font-weight:600;margin-bottom:6px}
+.analyzing-overlay p{font-size:13px;color:var(--text2)}
+#fileInput{display:none}
+.toast{position:fixed;bottom:calc(68px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 20px;font-size:13px;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:200;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* EBAY MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,15,17,.92);z-index:300;display:flex;align-items:flex-end;backdrop-filter:blur(6px)}
+.modal-overlay.hidden{display:none}
+.modal-sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-height:92vh;overflow-y:auto}
+.modal-drag{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--text2);margin-bottom:18px}
+.listing-type-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.listing-type-btn{padding:14px;border-radius:var(--radius-lg);border:1.5px solid var(--border2);background:var(--surface2);cursor:pointer;text-align:center;transition:all .15s}
+.listing-type-btn.selected{border-color:var(--blue);background:rgba(77,166,255,.08)}
+.listing-type-btn .type-icon{font-size:22px;margin-bottom:5px}
+.listing-type-btn .type-label{font-size:13px;font-weight:600;color:var(--text)}
+.listing-type-btn .type-sub{font-size:10px;color:var(--text2);margin-top:2px}
+.form-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;margin-top:14px;display:block}
+.form-input{width:100%;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;padding:11px 14px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace}
+.form-input:focus{outline:none;border-color:var(--blue)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.duration-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:4px}
+.duration-btn{padding:8px 4px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;text-align:center;transition:all .15s;font-family:'Sora',sans-serif}
+.duration-btn.selected{border-color:var(--blue);color:var(--blue);background:rgba(77,166,255,.08)}
+.condition-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.condition-btn{padding:9px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;text-align:center;transition:all .15s;font-family:'Sora',sans-serif}
+.condition-btn.selected{border-color:var(--green);color:var(--green);background:rgba(76,175,125,.08)}
+.ebay-preview-box{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px;margin-top:14px;margin-bottom:16px}
+.ebay-preview-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.ebay-preview-text{font-size:12px;color:var(--gold);font-weight:500;line-height:1.4}
+.list-btn{width:100%;padding:15px;border-radius:var(--radius-lg);background:linear-gradient(135deg,#e53238,#f5af02);color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:'Sora',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;letter-spacing:-.2px}
+.list-btn:disabled{opacity:.5;cursor:not-allowed}
+.list-btn-icon{font-size:18px}
+.cancel-btn{width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:14px;cursor:pointer;font-family:'Sora',sans-serif}
+.ebay-connected{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:var(--radius);margin-bottom:10px}
+.ebay-connected-dot{width:8px;height:8px;background:var(--green);border-radius:50%;flex-shrink:0}
+.ebay-connected-text{font-size:12px;color:var(--green);font-weight:500}
+.ebay-connect-btn{width:100%;padding:12px;border-radius:var(--radius);background:linear-gradient(135deg,#e53238,#f5af02);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:'Sora',sans-serif;margin-top:8px}
+.ebay-disconnect-btn{background:transparent;border:1px solid rgba(224,92,92,.3);color:var(--red);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;font-family:'Sora',sans-serif;margin-left:auto}
+.listing-success{text-align:center;padding:30px 20px}
+.listing-success-icon{font-size:48px;margin-bottom:12px}
+.listing-success h3{font-size:18px;font-weight:600;margin-bottom:6px}
+.listing-success p{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+.view-listing-btn{display:inline-block;padding:12px 24px;border-radius:var(--radius);background:linear-gradient(135deg,#e53238,#f5af02);color:#fff;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:10px;border:none;cursor:pointer;font-family:'Sora',sans-serif}
+
+/* AUTH */
+.auth-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;z-index:500}
+.auth-screen.hidden{display:none}
+.auth-logo{width:56px;height:56px;background:var(--gold);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:20px}
+.auth-title{font-size:24px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;text-align:center}
+.auth-sub{font-size:13px;color:var(--text2);margin-bottom:36px;text-align:center;line-height:1.5}
+.auth-form{width:100%;max-width:340px}
+.auth-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:13px 14px;color:var(--text);font-size:14px;font-family:'Sora',sans-serif;margin-bottom:10px;transition:border-color .15s}
+.auth-input:focus{outline:none;border-color:var(--blue)}
+.auth-btn{width:100%;padding:14px;border-radius:var(--radius);background:var(--blue2);color:#fff;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:12px;transition:opacity .15s}
+.auth-btn:active{opacity:.85}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:4px 0 12px;color:var(--text3);font-size:12px}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.google-btn{width:100%;padding:13px;border-radius:var(--radius);background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;font-family:'Sora',sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;transition:border-color .15s;margin-bottom:20px}
+.google-btn:active{border-color:var(--blue)}
+.google-icon{width:18px;height:18px}
+.auth-toggle{text-align:center;font-size:13px;color:var(--text2)}
+.auth-toggle span{color:var(--blue);cursor:pointer;font-weight:500}
+.auth-error{background:rgba(224,92,92,.12);border:1px solid rgba(224,92,92,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:12px;display:none}
+.auth-error.show{display:block}
+.auth-user-bar{display:flex;align-items:center;gap:8px}
+.auth-avatar{width:28px;height:28px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#111;overflow:hidden;flex-shrink:0}
+.auth-avatar img{width:100%;height:100%;object-fit:cover}
+.auth-email{font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.signout-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:'Sora',sans-serif}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div class="auth-screen hidden" id="authScreen">
+  <div class="auth-logo">🃏</div>
+  <div class="auth-title">CardVault</div>
+  <div class="auth-sub">Your personal sports card catalog.<br>Sign in to access your collection.</div>
+  <div class="auth-form">
+    <div class="auth-error" id="authError"></div>
+    <input class="auth-input" type="email" id="authEmail" placeholder="Email address" autocomplete="email">
+    <input class="auth-input" type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+    <button class="auth-btn" id="authSubmitBtn" onclick="submitAuth()">Sign in</button>
+    <div class="auth-divider">or</div>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-toggle" id="authToggle">Don't have an account? <span onclick="toggleAuthMode()">Sign up</span></div>
+    <div style="text-align:center;margin-top:16px">
+      <span onclick="showForgotPassword()" style="font-size:12px;color:var(--text3);cursor:pointer">Forgot password?</span>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">🃏</div>
+      <div>
+        <div class="logo-text">CardVault</div>
+        <div class="logo-sub">AI catalog</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="stats-bar">
+        <div class="stat-item"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Cards</div></div>
+        <div class="stat-item"><div class="stat-num" id="statValue">$0</div><div class="stat-lbl">Value</div></div>
+        <div class="stat-item"><div class="stat-num" id="statRC">0</div><div class="stat-lbl">RCs</div></div>
+        <div class="stat-item"><div class="stat-num" id="statSold">0</div><div class="stat-lbl">Sold</div></div>
+      </div>
+      <div class="auth-user-bar" id="userBar" style="display:none">
+        <div class="auth-avatar" id="userAvatar">?</div>
+        <button class="signout-btn" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- CATALOG -->
+    <div class="view active" id="viewCatalog">
+      <!-- Normal toolbar -->
+      <div class="toolbar" id="normalToolbar">
+        <div class="tabs">
+          <div class="tab active" onclick="filterCards('all',this)">All</div>
+          <div class="tab" onclick="filterCards('Baseball',this)">⚾</div>
+          <div class="tab" onclick="filterCards('Basketball',this)">🏀</div>
+          <div class="tab" onclick="filterCards('Football',this)">🏈</div>
+          <div class="tab" onclick="filterCards('Hockey',this)">🏒</div>
+          <div class="tab" onclick="filterCards('sold',this)">✓ Sold</div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0;align-items:center">
+          <!-- Sort dropdown -->
+          <select id="sortSelect" onchange="setSortOrder(this.value)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:11px;padding:5px 8px;font-family:'Sora',sans-serif;cursor:pointer">
+            <option value="added">Date added</option>
+            <option value="player">Player A-Z</option>
+            <option value="team">Team A-Z</option>
+            <option value="year">Year</option>
+            <option value="value_high">Value ↓</option>
+            <option value="value_low">Value ↑</option>
+            <option value="sport">Sport</option>
+          </select>
+          <!-- View toggle -->
+          <button id="viewToggleBtn" onclick="toggleView()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:14px;padding:5px 9px;cursor:pointer;line-height:1">⊞</button>
+          <button class="lot-mode-btn" onclick="enterLotMode()" title="Sell as lot">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+            Lot
+          </button>
+          <button class="upload-btn" onclick="openAddModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            Add
+          </button>
+        </div>
+      </div>
+      <!-- Lot selection toolbar -->
+      <div class="toolbar hidden" id="lotToolbar" style="background:rgba(26,127,255,.08);border-bottom-color:rgba(77,166,255,.3)">
+        <div style="display:flex;flex-direction:column;gap:1px">
+          <div style="font-size:13px;font-weight:600;color:var(--blue)">Select cards for lot</div>
+          <div id="lotCount" style="font-size:11px;color:var(--text2)">Tap cards to select</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="cancel-btn" style="padding:7px 12px;font-size:12px;width:auto" onclick="exitLotMode()">Cancel</button>
+          <button id="lotListBtn" class="upload-btn" style="background:linear-gradient(135deg,#e53238,#f5af02);opacity:.4;pointer-events:none" onclick="openLotModal()">
+            List Lot
+          </button>
+        </div>
+      </div>
+      <div class="cards-scroll">
+        <div class="cards-grid" id="cardsGrid"></div>
+      </div>
+    </div>
+
+    <!-- HOT -->
+    <div class="view" id="viewHot">
+      <div class="hot-scroll">
+        <div class="hot-header">
+          <div class="hot-header-icon">🔥</div>
+          <div class="hot-header-text">
+            <h3>Hot Right Now</h3>
+            <p>Player news + market momentum — updated every 2 hours</p>
+          </div>
+          <button class="refresh-btn" onclick="loadHotCards(true)">↻ Refresh</button>
+        </div>
+        <div id="hotContent">
+          <div class="hot-loading"><div class="hot-spinner"></div><p>Scanning trends...</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="view" id="viewDetail">
+      <div class="detail-header-bar">
+        <button class="back-btn" onclick="goBack()">← Back</button>
+        <h2 id="detailTitle">Card Detail</h2>
+        <span id="detailHotIcon" style="font-size:16px"></span>
+        <button onclick="openEditModal(selectedCardId)" style="padding:5px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:'Sora',sans-serif;flex-shrink:0">✏️ Edit</button>
+      </div>
+      <div class="detail-scroll" id="detailScroll"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="view" id="viewSettings">
+      <div class="settings-scroll">
+        <div class="settings-section">
+          <div class="settings-header">Anthropic API Key</div>
+          <div class="api-note">
+            Used for card identification and hot market trends. Stays on this device only.<br><br>
+            Get a key at <a href="#" onclick="openLink('https://console.anthropic.com');return false">console.anthropic.com</a>
+          </div>
+          <input class="api-input" type="password" id="apiKeyInput" placeholder="sk-ant-...">
+          <button class="save-btn" onclick="saveApiKey()">Save API Key</button>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-header">☁️ Cloud Sync</div>
+          <div id="supabaseStatusArea"></div>
+          <div class="api-note">
+            Syncs your entire catalog — cards, photos, and details — across every device. Free for up to ~5,000 cards.<br><br>
+            <strong style="color:var(--text)">Setup (2 min):</strong><br>
+            1. Go to <a href="#" onclick="openLink('https://supabase.com');return false">supabase.com</a> → New project<br>
+            2. Settings → API → copy <strong style="color:var(--text)">Project URL</strong> and <strong style="color:var(--text)">anon key</strong><br>
+            3. Run the SQL below in your Supabase SQL editor, then paste keys here
+          </div>
+          <div class="api-note" style="font-family:'DM Mono',monospace;font-size:10px;line-height:1.8;color:var(--text2);position:relative">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px">SQL to run in Supabase:</div>
+create table cards (
+  id text primary key,
+  data jsonb not null,
+  img_url text,
+  updated_at timestamptz default now()
+);
+alter table cards enable row level security;
+create policy "public access" on cards
+  for all using (true) with check (true);
+            <button onclick="copySupabaseSQL()" style="position:absolute;top:6px;right:6px;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:10px;padding:3px 8px;cursor:pointer;font-family:'Sora',sans-serif">Copy</button>
+          </div>
+          <label class="form-label">Supabase Project URL</label>
+          <input class="api-input" type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co">
+          <label class="form-label" style="margin-top:8px">Supabase Anon Key</label>
+          <input class="api-input" type="password" id="supabaseKey" placeholder="eyJhbGci...">
+          <button class="save-btn" style="margin-top:10px" onclick="saveSupabaseKeys()">Save & Connect</button>
+          <div id="syncStatusBar" style="display:none;margin-top:10px;padding:10px 12px;border-radius:8px;font-size:12px;background:var(--surface2);border:1px solid var(--border2)"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="settings-btn" style="flex:1" onclick="syncNow()">↻ Sync Now</button>
+            <button class="settings-btn" style="flex:1" onclick="pullFromCloud()">↓ Pull from Cloud</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-header">eBay Integration</div>
+          <div id="ebayStatusArea"></div>
+
+          <div class="api-note">
+            <strong style="color:var(--text)">Setup (one time, ~5 min):</strong><br>
+            1. Create a free account at <a href="#" onclick="openLink('https://developer.ebay.com');return false">developer.ebay.com</a><br>
+            2. Create an app → copy your <strong style="color:var(--text)">App ID</strong> and <strong style="color:var(--text)">Cert ID</strong> below<br>
+            3. Tap <strong style="color:var(--text)">Connect eBay Account</strong> to authorize with one tap
+          </div>
+
+          <label class="form-label">App ID (Client ID)</label>
+          <input class="api-input" type="text" id="ebayAppId" placeholder="YourApp-PROD-XXXX...">
+
+          <label class="form-label" style="margin-top:8px">Cert ID (Client Secret)</label>
+          <input class="api-input" type="password" id="ebayCertId" placeholder="PRD-XXXX...">
+
+          <label class="form-label" style="margin-top:8px">RuName (eBay redirect name)</label>
+          <div class="api-note" style="margin-top:4px;margin-bottom:6px;font-size:11px">In your eBay developer app, set the RuName redirect URL to: <span style="color:var(--blue);font-family:'DM Mono',monospace;font-size:11px" id="oauthRedirectDisplay"></span></div>
+          <input class="api-input" type="text" id="ebayRuName" placeholder="YourApp-PROD-XXXX-XXXX">
+
+          <button class="save-btn" style="margin-top:10px;margin-bottom:10px" onclick="saveEbayKeys()">Save Keys</button>
+          <button class="ebay-connect-btn" onclick="connectEbay()">🔗 Connect eBay Account (OAuth)</button>
+
+          <div style="margin-top:10px;text-align:center;font-size:11px;color:var(--text3)">— or paste token manually —</div>
+          <label class="form-label" style="margin-top:8px">User Token (manual)</label>
+          <input class="api-input" type="password" id="ebayUserToken" placeholder="Paste OAuth token here">
+          <button class="save-btn" style="margin-top:8px;background:var(--surface2);color:var(--text);border:1px solid var(--border2)" onclick="saveManualToken()">Save Token</button>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-header">Shipping & Location</div>
+          <div class="api-note">Used for eBay listing shipping calculations.</div>
+          <label class="form-label">Your ZIP code</label>
+          <input class="api-input" type="text" id="sellerZip" placeholder="e.g. 90210" maxlength="10" inputmode="numeric">
+          <label class="form-label" style="margin-top:10px">Shipping cost (single card, $)</label>
+          <div class="form-row">
+            <div>
+              <label class="form-label" style="font-size:9px">Single card</label>
+              <input class="api-input" type="number" id="shippingSingle" placeholder="4.99" step="0.01" min="0">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:9px">Lot / multiple</label>
+              <input class="api-input" type="number" id="shippingLot" placeholder="5.99" step="0.01" min="0">
+            </div>
+          </div>
+          <button class="save-btn" style="margin-top:10px" onclick="saveShipping()">Save Shipping Settings</button>
+        </div>
+        <div class="settings-section">
+          <div class="settings-header">Default Listing Settings</div>
+          <label class="form-label">Default duration</label>
+          <div class="duration-grid" id="defaultDurationGrid">
+            <div class="duration-btn" onclick="setDefaultDuration(3,this)">3 days</div>
+            <div class="duration-btn selected" onclick="setDefaultDuration(5,this)">5 days</div>
+            <div class="duration-btn" onclick="setDefaultDuration(7,this)">7 days</div>
+            <div class="duration-btn" onclick="setDefaultDuration(10,this)">10 days</div>
+          </div>
+          <label class="form-label" style="margin-top:12px">Default listing type</label>
+          <div class="form-row">
+            <div class="condition-btn selected" id="defaultAuction" onclick="setDefaultType('auction')">🔨 Auction</div>
+            <div class="condition-btn" id="defaultBIN" onclick="setDefaultType('bin')">💰 Buy It Now</div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-header">Data</div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Export catalog</div><div class="settings-row-sub">Download as JSON</div></div>
+            <button class="settings-btn" onclick="exportCatalog()">Export</button>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Clear all cards</div><div class="settings-row-sub">Cannot be undone</div></div>
+            <button class="settings-btn danger" onclick="clearAll()">Clear</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-header">About</div>
+          <div class="api-note">CardVault v2.0 · Powered by Claude AI + eBay API<br>All data stored locally on your device.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active" id="navCatalog" onclick="showView('catalog')">
+      <div class="nav-icon">📦</div><div class="nav-label">Catalog</div>
+    </div>
+    <div class="nav-item fire-nav" id="navHot" onclick="showView('hot')">
+      <div class="nav-icon">🔥</div><div class="nav-label">Hot</div>
+      <div class="nav-dot" id="hotDot"></div>
+    </div>
+    <div class="nav-item" onclick="openAddModal()">
+      <div class="nav-icon">📸</div><div class="nav-label">Add Card</div>
+    </div>
+    <div class="nav-item" id="navSettings" onclick="showView('settings')">
+      <div class="nav-icon">⚙️</div><div class="nav-label">Settings</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CARD CHOICE MODAL -->
+<div class="modal-overlay hidden" id="addModal">
+  <div class="modal-sheet">
+    <div class="modal-drag"></div>
+    <div class="modal-title">Add a Card</div>
+    <div class="modal-sub">How do you want to add this card?</div>
+    <div style="display:grid;gap:10px;margin-bottom:12px">
+      <div class="add-choice-btn" onclick="chooseAiScan()">
+        <div class="add-choice-icon">🤖</div>
+        <div class="add-choice-body">
+          <div class="add-choice-title">AI Scan</div>
+          <div class="add-choice-sub">Take a photo — Claude identifies everything automatically (~$0.02)</div>
+        </div>
+        <div class="add-choice-arrow">→</div>
+      </div>
+      <div class="add-choice-btn" onclick="chooseManual(null)">
+        <div class="add-choice-icon">✏️</div>
+        <div class="add-choice-body">
+          <div class="add-choice-title">Manual Entry</div>
+          <div class="add-choice-sub">Type in the details yourself — free, no AI needed</div>
+        </div>
+        <div class="add-choice-arrow">→</div>
+      </div>
+      <div class="add-choice-btn" onclick="chooseManualWithPhoto()">
+        <div class="add-choice-icon">📸</div>
+        <div class="add-choice-body">
+          <div class="add-choice-title">Photo + Manual</div>
+          <div class="add-choice-sub">Upload a photo but fill in details yourself — free</div>
+        </div>
+        <div class="add-choice-arrow">→</div>
+      </div>
+    </div>
+    <button class="cancel-btn" onclick="closeAddModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- MANUAL ENTRY MODAL -->
+<div class="modal-overlay hidden" id="manualModal">
+  <div class="modal-sheet" style="max-height:96vh">
+    <div class="modal-drag"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title" id="manualModalTitle">Manual Entry</div>
+      <button style="background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:0 4px" onclick="closeManualModal()">×</button>
+    </div>
+    <div class="modal-sub">Fill in what you know — everything is optional</div>
+
+    <!-- Photo preview / upload -->
+    <div id="manualPhotoArea" style="margin-bottom:14px">
+      <div id="manualPhotoPreview" style="width:80px;height:104px;border-radius:10px;background:var(--surface3);border:1.5px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:var(--text3);gap:4px" onclick="document.getElementById('manualFileInput').click()">
+        📷<div style="font-size:9px">Add photo</div>
+      </div>
+    </div>
+    <input type="file" id="manualFileInput" accept="image/*" multiple style="display:none" onchange="handleManualPhoto(this)">
+
+    <div style="display:grid;gap:2px">
+      <label class="form-label">Player name</label>
+      <input class="form-input" id="mPlayer" placeholder="e.g. Patrick Mahomes" autocomplete="off">
+
+      <label class="form-label" style="margin-top:10px">Sport</label>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:2px">
+        <div class="sport-btn selected" onclick="selectSport('Baseball',this)">⚾<br><span style="font-size:9px">Baseball</span></div>
+        <div class="sport-btn" onclick="selectSport('Basketball',this)">🏀<br><span style="font-size:9px">Basketball</span></div>
+        <div class="sport-btn" onclick="selectSport('Football',this)">🏈<br><span style="font-size:9px">Football</span></div>
+        <div class="sport-btn" onclick="selectSport('Hockey',this)">🏒<br><span style="font-size:9px">Hockey</span></div>
+        <div class="sport-btn" onclick="selectSport('Soccer',this)">⚽<br><span style="font-size:9px">Soccer</span></div>
+      </div>
+
+      <div class="form-row" style="margin-top:10px">
+        <div>
+          <label class="form-label">Year</label>
+          <input class="form-input" id="mYear" placeholder="2024" type="number" min="1900" max="2030">
+        </div>
+        <div>
+          <label class="form-label">Team</label>
+          <input class="form-input" id="mTeam" placeholder="e.g. Chiefs">
+        </div>
+      </div>
+
+      <label class="form-label" style="margin-top:10px">Brand / Set</label>
+      <input class="form-input" id="mBrand" placeholder="e.g. Panini Prizm">
+
+      <div class="form-row" style="margin-top:10px">
+        <div>
+          <label class="form-label">Parallel</label>
+          <input class="form-input" id="mParallel" placeholder="e.g. Gold, Silver">
+        </div>
+        <div>
+          <label class="form-label">Numbered</label>
+          <input class="form-input" id="mNumbered" placeholder="e.g. /99">
+        </div>
+      </div>
+
+      <label class="form-label" style="margin-top:10px">Condition / Grade</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+        <div class="condition-btn" onclick="selectCondition('Near Mint or Better',this)">Near Mint+</div>
+        <div class="condition-btn" onclick="selectCondition('Excellent',this)">Excellent</div>
+        <div class="condition-btn" onclick="selectCondition('Very Good',this)">Very Good</div>
+        <div class="condition-btn" onclick="selectCondition('Poor',this)">Poor</div>
+        <div class="condition-btn" onclick="selectCondition('Graded',this)">Graded</div>
+      </div>
+      <input class="form-input" id="mGrade" placeholder="Or type grade: PSA 8, BGS 9.5..." style="margin-top:6px">
+
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="mRookie" style="accent-color:var(--gold)"> Rookie Card</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="mAuto" style="accent-color:var(--gold)"> Autograph</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="mRelic" style="accent-color:var(--gold)"> Relic/Patch</label>
+      </div>
+
+      <label class="form-label" style="margin-top:12px">Your price estimate</label>
+      <div class="form-row">
+        <div>
+          <label class="form-label" style="font-size:9px">Min $</label>
+          <input class="form-input" id="mPriceMin" placeholder="5" type="number" min="0">
+        </div>
+        <div>
+          <label class="form-label" style="font-size:9px">Max $</label>
+          <input class="form-input" id="mPriceMax" placeholder="20" type="number" min="0">
+        </div>
+      </div>
+
+      <label class="form-label" style="margin-top:10px">Notes (optional)</label>
+      <input class="form-input" id="mNotes" placeholder="Any other details...">
+    </div>
+
+    <button class="save-btn" style="margin-top:16px;margin-bottom:8px" onclick="saveManualCard()">Save Card</button>
+    <button class="cancel-btn" onclick="closeManualModal()">Cancel</button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- LOT LISTING MODAL -->
+<div class="modal-overlay hidden" id="lotModal">
+  <div class="modal-sheet" style="max-height:96vh">
+    <div class="modal-drag"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">Sell as Lot</div>
+      <button style="background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:0 4px" onclick="closeLotModal()">×</button>
+    </div>
+    <div class="modal-sub" id="lotModalSub">Listing multiple cards together</div>
+
+    <!-- Selected cards strip -->
+    <div id="lotCardStrip" style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;margin-bottom:4px"></div>
+
+    <!-- Lot title -->
+    <label class="form-label">Lot title</label>
+    <input class="form-input" id="lotTitle" placeholder="e.g. 2023 Prizm Basketball Lot (5 cards)">
+
+    <!-- Lot description -->
+    <label class="form-label" style="margin-top:10px">Description</label>
+    <textarea class="form-input" id="lotDesc" rows="4" style="resize:none;line-height:1.5;font-family:'Sora',sans-serif;font-size:13px"></textarea>
+
+    <!-- Listing type -->
+    <label class="form-label" style="margin-top:10px">Listing type</label>
+    <div class="listing-type-row">
+      <div class="listing-type-btn selected" id="lotTypeAuction" onclick="setLotType('auction')">
+        <div class="type-icon">🔨</div><div class="type-label">Auction</div><div class="type-sub">Let buyers bid</div>
+      </div>
+      <div class="listing-type-btn" id="lotTypeBIN" onclick="setLotType('bin')">
+        <div class="type-icon">💰</div><div class="type-label">Buy It Now</div><div class="type-sub">Set your price</div>
+      </div>
+    </div>
+
+    <!-- Price -->
+    <div class="form-row" id="lotPriceRow">
+      <div>
+        <label class="form-label">Starting bid</label>
+        <input class="form-input" id="lotStartPrice" type="number" min="0.99" step="0.01" placeholder="9.99">
+      </div>
+      <div>
+        <label class="form-label">BIN price (optional)</label>
+        <input class="form-input" id="lotBinPrice" type="number" min="0.99" step="0.01" placeholder="29.99">
+      </div>
+    </div>
+
+    <!-- Duration -->
+    <label class="form-label" style="margin-top:10px">Duration</label>
+    <div class="duration-grid" id="lotDurationGrid">
+      <div class="duration-btn" onclick="setLotDuration(3,this)">3 days</div>
+      <div class="duration-btn selected" onclick="setLotDuration(5,this)">5 days</div>
+      <div class="duration-btn" onclick="setLotDuration(7,this)">7 days</div>
+      <div class="duration-btn" onclick="setLotDuration(10,this)">10 days</div>
+    </div>
+
+    <!-- Value summary -->
+    <div id="lotValueBox" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px;margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:2px">Combined est. value</div>
+        <div id="lotTotalValue" style="font-size:18px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace">$0</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:2px">Cards in lot</div>
+        <div id="lotCardCount" style="font-size:18px;font-weight:700;color:var(--gold);font-family:'DM Mono',monospace">0</div>
+      </div>
+    </div>
+
+    <button class="list-btn" style="margin-top:14px" onclick="submitLotListing()">
+      <span class="list-btn-icon">📦</span> <span id="lotSubmitLabel">Post Lot to eBay</span>
+    </button>
+    <button class="cancel-btn" onclick="closeLotModal()">Cancel</button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<style>
+.lot-mode-btn{display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:var(--radius);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);font-family:'Sora',sans-serif;white-space:nowrap}
+.lot-mode-btn:active{border-color:var(--blue);color:var(--blue)}
+.card-thumb.lot-selectable{cursor:pointer}
+.card-thumb.lot-selectable:active{border-color:var(--blue)}
+.card-thumb.lot-selected{border-color:var(--blue);box-shadow:0 0 0 2px rgba(77,166,255,.3)}
+.lot-check{position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2}
+.lot-check-empty{position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.45);border:1.5px solid rgba(255,255,255,.4);z-index:2}
+.lot-card-thumb{width:44px;height:58px;border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:18px;border:1.5px solid var(--blue);position:relative}
+.lot-card-thumb img{width:100%;height:100%;object-fit:cover}
+.lot-card-remove{position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:var(--red);border-radius:50%;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--bg)}
+</style>
+
+<!-- EDIT CARD MODAL -->
+<div class="modal-overlay hidden" id="editModal">
+  <div class="modal-sheet" style="max-height:96vh">
+    <div class="modal-drag"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">Edit Card</div>
+      <button style="background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:0 4px" onclick="closeEditModal()">×</button>
+    </div>
+    <div class="modal-sub">Update details or swap photos</div>
+
+    <!-- Photo management -->
+    <div style="margin-bottom:14px">
+      <div class="section-label" style="margin-bottom:8px">Photos</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div id="editPhotoPreview" style="width:70px;height:90px;border-radius:8px;overflow:hidden;border:1px solid var(--border2);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;flex-shrink:0" onclick="document.getElementById('editFileInput').click()">🃏</div>
+        <div>
+          <button onclick="document.getElementById('editFileInput').click()" style="display:block;padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:6px">📷 Change photo</button>
+          <button id="editRemovePhotoBtn" onclick="removeEditPhoto()" style="display:block;padding:8px 14px;border-radius:8px;border:1px solid rgba(224,92,92,.3);background:transparent;color:var(--red);font-size:12px;cursor:pointer;font-family:'Sora',sans-serif">✕ Remove photo</button>
+        </div>
+      </div>
+      <input type="file" id="editFileInput" accept="image/*" style="display:none" onchange="handleEditPhoto(this)">
+    </div>
+
+    <div style="display:grid;gap:2px">
+      <label class="form-label">Player name</label>
+      <input class="form-input" id="editPlayer" placeholder="e.g. Patrick Mahomes">
+
+      <label class="form-label" style="margin-top:10px">Sport</label>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:2px" id="editSportBtns">
+        <div class="sport-btn selected" onclick="selectEditSport('Baseball',this)">⚾<br><span style="font-size:9px">Baseball</span></div>
+        <div class="sport-btn" onclick="selectEditSport('Basketball',this)">🏀<br><span style="font-size:9px">Basketball</span></div>
+        <div class="sport-btn" onclick="selectEditSport('Football',this)">🏈<br><span style="font-size:9px">Football</span></div>
+        <div class="sport-btn" onclick="selectEditSport('Hockey',this)">🏒<br><span style="font-size:9px">Hockey</span></div>
+        <div class="sport-btn" onclick="selectEditSport('Soccer',this)">⚽<br><span style="font-size:9px">Soccer</span></div>
+      </div>
+
+      <div class="form-row" style="margin-top:10px">
+        <div><label class="form-label">Year</label><input class="form-input" id="editYear" placeholder="2024" type="number"></div>
+        <div><label class="form-label">Team</label><input class="form-input" id="editTeam" placeholder="e.g. Chiefs"></div>
+      </div>
+
+      <label class="form-label" style="margin-top:10px">Brand / Set</label>
+      <input class="form-input" id="editBrand" placeholder="e.g. Panini Prizm">
+
+      <div class="form-row" style="margin-top:10px">
+        <div><label class="form-label">Parallel</label><input class="form-input" id="editParallel" placeholder="e.g. Gold"></div>
+        <div><label class="form-label">Numbered</label><input class="form-input" id="editNumbered" placeholder="e.g. /99"></div>
+      </div>
+
+      <label class="form-label" style="margin-top:10px">Grade / Condition</label>
+      <input class="form-input" id="editGrade" placeholder="e.g. PSA 9, Near Mint or Better">
+
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="editRookie" style="accent-color:var(--gold)"> Rookie Card</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="editAuto" style="accent-color:var(--gold)"> Autograph</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="editRelic" style="accent-color:var(--gold)"> Relic/Patch</label>
+      </div>
+
+      <label class="form-label" style="margin-top:12px">Price estimate</label>
+      <div class="form-row">
+        <div><label class="form-label" style="font-size:9px">Min $</label><input class="form-input" id="editPriceMin" type="number" min="0"></div>
+        <div><label class="form-label" style="font-size:9px">Max $</label><input class="form-input" id="editPriceMax" type="number" min="0"></div>
+      </div>
+
+      <label class="form-label" style="margin-top:10px">Notes</label>
+      <input class="form-input" id="editNotes" placeholder="Any other details...">
+    </div>
+
+    <button class="save-btn" style="margin-top:16px;margin-bottom:8px" onclick="saveEditCard()">Save Changes</button>
+    <button class="cancel-btn" onclick="closeEditModal()">Cancel</button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- EBAY LISTING MODAL -->
+<div class="modal-overlay hidden" id="ebayModal">
+  <div class="modal-sheet" id="ebayModalSheet">
+    <div class="modal-drag"></div>
+    <div id="ebayModalContent"></div>
+  </div>
+</div>
+
+<div class="analyzing-overlay hidden" id="analyzingOverlay">
+  <div class="spinner"></div>
+  <h3>Identifying card...</h3>
+  <p id="analyzingText">Claude AI is reading your card</p>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" onload="window._supabase=supabase"></script>
+<script>
+
+// -- SUPABASE AUTH CLIENT ---------------------------------------
+// Load Supabase JS via CDN (injected at runtime)
+let _supabaseClient = null;
+function getSB(){
+  if(_supabaseClient) return _supabaseClient;
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
+  if(typeof window !== 'undefined' && window._supabase && url && key){
+    _supabaseClient = window._supabase.createClient(url, key);
+  }
+  return _supabaseClient;
+}
+
+let currentUser = null;
+
+// -- AUTH FUNCTIONS --------------------------------------------
+let authMode = 'signin'; // 'signin' | 'signup'
+
+function showAuthScreen(){
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+function hideAuthScreen(){
+  document.getElementById('authScreen').classList.add('hidden');
+}
+
+function toggleAuthMode(){
+  authMode = authMode === 'signin' ? 'signup' : 'signin';
+  const btn = document.getElementById('authSubmitBtn');
+  const toggle = document.getElementById('authToggle');
+  if(authMode === 'signup'){
+    btn.textContent = 'Create account';
+    toggle.innerHTML = 'Already have an account? <span onclick="toggleAuthMode()">Sign in</span>';
+  } else {
+    btn.textContent = 'Sign in';
+    toggle.innerHTML = "Don't have an account? <span onclick=\"toggleAuthMode()\">Sign up</span>";
+  }
+  showAuthError('');
+}
+
+function showAuthError(msg){
+  const el = document.getElementById('authError');
+  if(msg){ el.textContent = msg; el.classList.add('show'); }
+  else { el.classList.remove('show'); }
+}
+
+async function submitAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if(!email || !password){ showAuthError('Please enter your email and password'); return; }
+
+  const btn = document.getElementById('authSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = authMode === 'signin' ? 'Signing in...' : 'Creating account...';
+  showAuthError('');
+
+  const sb = getSB();
+  if(!sb){ showAuthError('Connection error — check your internet'); btn.disabled=false; btn.textContent=authMode==='signin'?'Sign in':'Create account'; return; }
+
+  try{
+    let result;
+    if(authMode === 'signup'){
+      result = await sb.auth.signUp({email, password});
+      if(result.error) throw result.error;
+      if(result.data?.user?.identities?.length === 0){
+        showAuthError('An account with this email already exists. Try signing in.');
+        btn.disabled=false; btn.textContent='Create account'; return;
+      }
+      showAuthError('');
+      // If email confirmation required
+      if(!result.data?.session){
+        showToast('✓ Check your email to confirm your account');
+        btn.disabled=false; btn.textContent='Create account'; return;
+      }
+    } else {
+      result = await sb.auth.signInWithPassword({email, password});
+      if(result.error) throw result.error;
+    }
+    // Session established - onAuthStateChange will handle the rest
+  } catch(err){
+    const msg = err.message || 'Authentication failed';
+    showAuthError(msg.includes('Invalid login') ? 'Incorrect email or password' : msg);
+    btn.disabled=false;
+    btn.textContent=authMode==='signin'?'Sign in':'Create account';
+  }
+}
+
+async function signInWithGoogle(){
+  const sb = getSB();
+  if(!sb){ showAuthError('Connection error'); return; }
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+  if(error) showAuthError(error.message);
+}
+
+async function showForgotPassword(){
+  const email = document.getElementById('authEmail').value.trim();
+  const addr = email || prompt('Enter your email address:');
+  if(!addr) return;
+  const sb = getSB();
+  if(!sb) return;
+  const { error } = await sb.auth.resetPasswordForEmail(addr, {
+    redirectTo: window.location.origin + window.location.pathname + '?reset=true'
+  });
+  if(error) showAuthError(error.message);
+  else showToast('✓ Password reset email sent');
+}
+
+async function signOut(){
+  const sb = getSB();
+  if(sb) await sb.auth.signOut();
+  currentUser = null;
+  cards = [];
+  updateStats();
+  renderGrid();
+  document.getElementById('userBar').style.display = 'none';
+  showAuthScreen();
+  showToast('Signed out');
+}
+
+async function onUserSignedIn(user){
+  currentUser = user;
+  hideAuthScreen();
+
+  // Show user bar
+  const bar = document.getElementById('userBar');
+  bar.style.display = 'flex';
+  const avatar = document.getElementById('userAvatar');
+  const pic = user.user_metadata?.avatar_url;
+  if(pic){ avatar.innerHTML = `<img src="${pic}" alt="">`; }
+  else { avatar.textContent = (user.email||'?')[0].toUpperCase(); }
+
+  // Load their settings then cards from cloud
+  await loadSettings();
+  loadUserCards();
+}
+
+async function loadUserCards(){
+  if(!currentUser || !isSupabaseConnected()) return;
+  try{
+    const sbUrl = getSupabaseUrl();
+    const sb = getSB();
+    const { data, error } = await sb.from('cards').select('*').order('updated_at', {ascending:false});
+    if(error) throw error;
+    if(data && data.length > 0){
+      cards = data.map(row => ({
+        ...row.data,
+        id: row.id,
+        cloudImgUrl: row.img_url,
+        // Image is stored in data.imgData directly
+        imgData: row.data?.imgData || row.img_url || null,
+      }));
+      localStorage.setItem('cv_cards', JSON.stringify(cards));
+      localStorage.setItem('cv_last_sync', Date.now().toString());
+    } else {
+      // No cloud cards — load from local storage as seed
+      const local = JSON.parse(localStorage.getItem('cv_cards')||'[]');
+      if(local.length > 0){
+        cards = local;
+        syncNow(); // push local cards up to cloud under this user
+      }
+    }
+    updateStats();
+    renderGrid();
+  } catch(e){
+    console.warn('loadUserCards failed', e);
+    // Fall back to local
+    cards = JSON.parse(localStorage.getItem('cv_cards')||'[]');
+    updateStats();
+    renderGrid();
+  }
+}
+
+// Initialize auth on startup
+async function initAuth(){
+  // Load config (env vars) from Netlify function first
+  await loadConfig();
+
+  // Reset client so it gets rebuilt with fresh credentials
+  _supabaseClient = null;
+
+  // Wait for Supabase SDK to be available
+  let attempts = 0;
+  while(!window._supabase && attempts < 20){
+    await new Promise(r=>setTimeout(r,100));
+    attempts++;
+  }
+
+  const sb = getSB();
+  if(!sb){
+    console.warn('Supabase not available, running in local mode');
+    cards = JSON.parse(localStorage.getItem('cv_cards')||'[]');
+    updateStats(); renderGrid();
+    return;
+  }
+
+  // Listen for auth state changes
+  sb.auth.onAuthStateChange((event, session)=>{
+    if(session?.user){
+      onUserSignedIn(session.user);
+    } else if(event === 'SIGNED_OUT'){
+      currentUser = null;
+      showAuthScreen();
+    }
+  });
+
+  // Check for existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if(session?.user){
+    onUserSignedIn(session.user);
+  } else {
+    showAuthScreen();
+  }
+}
+
+let cards = JSON.parse(localStorage.getItem('cv_cards') || '[]');
+
+let hotData = JSON.parse(localStorage.getItem('cv_hot') || 'null');
+let hotLastFetch = parseInt(localStorage.getItem('cv_hot_ts') || '0');
+let currentFilter = 'all';
+let currentView = 'catalog';
+let prevView = 'catalog';
+let selectedCardId = null;
+
+// -- SUPABASE SYNC ----------------------------------------------
+// -- RUNTIME CONFIG (keys served from Netlify env vars, never in source) ----
+let _runtimeConfig = null;
+const CONFIG_CACHE_KEY = 'cv_config_cache';
+const CONFIG_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+// -- BAKED-IN CONFIG (no server needed) -------------------------
+const SUPABASE_URL = 'https://qiciawmqnntvtuvvxvjz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_N42XZ-gbgqQf2E3yX8AT1g_cOd6Gazu';
+
+async function loadConfig(){
+  _runtimeConfig = { supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_KEY };
+  return _runtimeConfig;
+}
+
+function getSupabaseUrl(){
+  return localStorage.getItem('cv_sb_url') || SUPABASE_URL;
+}
+
+function getSupabaseKey(){
+  return localStorage.getItem('cv_sb_key') || SUPABASE_KEY;
+}
+
+function isSupabaseConnected(){ return !!(getSupabaseUrl() && getSupabaseKey()); }
+let syncInProgress = false;
+let pendingSync = false;
+
+function sbHeaders(){
+  return {
+    'Content-Type': 'application/json',
+    'apikey': getSupabaseKey(),
+    'Authorization': 'Bearer ' + getSupabaseKey(),
+    'Prefer': 'return=minimal'
+  };
+}
+
+function saveSupabaseKeys(){
+  const url = document.getElementById('supabaseUrl').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('supabaseKey').value.trim();
+  if(!url || !key){ showToast('Enter both URL and key'); return; }
+  localStorage.setItem('cv_sb_url', url);
+  localStorage.setItem('cv_sb_key', key);
+  showToast(' Supabase connected  syncing...');
+  renderSupabaseStatus();
+  syncNow();
+}
+
+function copySupabaseSQL(){
+  const sql = `create table cards (\n  id text primary key,\n  data jsonb not null,\n  img_url text,\n  updated_at timestamptz default now()\n);\nalter table cards enable row level security;\ncreate policy "public access" on cards\n  for all using (true) with check (true);`;
+  navigator.clipboard.writeText(sql).then(()=>showToast(' SQL copied')).catch(()=>showToast('Copy failed'));
+}
+
+function renderSupabaseStatus(){
+  const area = document.getElementById('supabaseStatusArea');
+  if(!area) return;
+  const connected = isSupabaseConnected();
+  area.innerHTML = connected
+    ? `<div class="ebay-connected" style="margin-bottom:10px"><div class="ebay-connected-dot"></div><div class="ebay-connected-text"> Cloud sync active</div><button class="ebay-disconnect-btn" onclick="disconnectSupabase()">Disconnect</button></div>`
+    : '';
+  const urlEl = document.getElementById('supabaseUrl');
+  const keyEl = document.getElementById('supabaseKey');
+  if(urlEl) urlEl.value = getSupabaseUrl();
+  if(keyEl) keyEl.value = getSupabaseKey() ? '************' : '';
+  updateSyncBar();
+}
+
+function disconnectSupabase(){
+  if(!confirm('Disconnect cloud sync? Your local cards stay on this device.')) return;
+  localStorage.removeItem('cv_sb_url');
+  localStorage.removeItem('cv_sb_key');
+  renderSupabaseStatus();
+  showToast('Cloud sync disconnected');
+}
+
+function updateSyncBar(msg, isError){
+  const bar = document.getElementById('syncStatusBar');
+  if(!bar) return;
+  const lastSync = localStorage.getItem('cv_last_sync');
+  if(msg){
+    bar.style.display = 'block';
+    bar.style.borderColor = isError ? 'rgba(224,92,92,.3)' : 'var(--border2)';
+    bar.style.color = isError ? 'var(--red)' : 'var(--text2)';
+    bar.textContent = msg;
+  } else if(lastSync){
+    bar.style.display = 'block';
+    bar.style.borderColor = 'rgba(76,175,125,.3)';
+    bar.style.color = 'var(--green)';
+    bar.textContent = ' Last synced: ' + new Date(parseInt(lastSync)).toLocaleString();
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+// Compress image to ~150KB for cloud storage
+async function compressImage(dataUrl, maxKB=150){
+  if(!dataUrl) return null;
+  return new Promise(res=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const maxDim = 800;
+      if(w > maxDim || h > maxDim){
+        if(w > h){ h = Math.round(h * maxDim/w); w = maxDim; }
+        else { w = Math.round(w * maxDim/h); h = maxDim; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      // Try quality steps until under maxKB
+      let quality = 0.8;
+      let result = canvas.toDataURL('image/jpeg', quality);
+      while(result.length > maxKB * 1024 * 1.37 && quality > 0.2){
+        quality -= 0.1;
+        result = canvas.toDataURL('image/jpeg', quality);
+      }
+      res(result);
+    };
+    img.onerror = ()=>res(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// Image storage note: images stored inline in data column, no separate storage needed
+
+// Push a single card to Supabase
+async function pushCard(card){
+  if(!isSupabaseConnected()) return;
+
+  // Compress image and store inline in the data column
+  // (avoids Supabase Storage auth complexity)
+  let cardData = {...card};
+  if(card.imgData && !card.imgData.startsWith('http')){
+    const compressed = await compressImage(card.imgData, 150);
+    cardData.imgData = compressed || card.imgData;
+  }
+
+  const payload = {
+    id: card.id,
+    data: cardData,
+    img_url: card.cloudImgUrl || null,
+    updated_at: new Date().toISOString(),
+    user_id: currentUser?.id || null
+  };
+
+  const sb = getSB();
+  if(sb){
+    await sb.from('cards').upsert(payload);
+  } else {
+    await fetch(`${getSupabaseUrl()}/rest/v1/cards`, {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(payload)
+    });
+  }
+}
+
+// Push all local cards to cloud
+async function syncNow(){
+  if(!isSupabaseConnected()){ showToast('Set up cloud sync in Settings first'); return; }
+  if(syncInProgress){ pendingSync=true; return; }
+  syncInProgress = true;
+  updateSyncBar(' Syncing ' + cards.length + ' cards...');
+
+  try{
+    // First ensure the storage bucket exists
+    await ensureStorageBucket();
+
+    for(let i=0; i<cards.length; i++){
+      updateSyncBar(` Syncing card ${i+1}/${cards.length}...`);
+      await pushCard(cards[i]);
+    }
+    localStorage.setItem('cv_last_sync', Date.now().toString());
+    updateSyncBar();
+    showToast(' Catalog synced to cloud');
+  } catch(e){
+    updateSyncBar(' Sync failed: ' + e.message, true);
+    console.error(e);
+  } finally{
+    syncInProgress = false;
+    if(pendingSync){ pendingSync=false; syncNow(); }
+  }
+}
+
+// Pull all cards from cloud (replaces local)
+async function pullFromCloud(){
+  if(!isSupabaseConnected()){ showToast('Set up cloud sync first'); return; }
+  if(!confirm('Pull from cloud? This will replace your local catalog with the cloud version.')) return;
+  updateSyncBar('⏳ Pulling from cloud...');
+
+  try{
+    const sb = getSB();
+    let rows;
+    if(sb){
+      const { data, error } = await sb.from('cards').select('*').order('updated_at', {ascending:false});
+      if(error) throw error;
+      rows = data;
+    } else {
+      const resp = await fetch(`${getSupabaseUrl()}/rest/v1/cards?select=*&order=updated_at.desc`, { headers: sbHeaders() });
+      if(!resp.ok) throw new Error('Failed to fetch: ' + resp.status);
+      rows = await resp.json();
+    }
+    if(!Array.isArray(rows)) throw new Error('Unexpected response');
+
+    cards = rows.map(row => ({
+      ...row.data,
+      id: row.id,
+      cloudImgUrl: row.img_url,
+      imgData: row.data?.imgData || row.img_url || null,
+    }));
+
+    localStorage.setItem('cv_cards', JSON.stringify(cards));
+    localStorage.setItem('cv_last_sync', Date.now().toString());
+    updateStats();
+    renderGrid();
+    updateSyncBar();
+    showToast(`✓ Pulled ${cards.length} cards from cloud`);
+  } catch(e){
+    updateSyncBar('❌ Pull failed: ' + e.message, true);
+    console.error(e);
+  }
+}
+
+// Delete a card from cloud
+async function deleteCardFromCloud(id){
+  if(!isSupabaseConnected()) return;
+  try{
+    const sb = getSB();
+    if(sb) await sb.from('cards').delete().eq('id', id);
+  } catch(e){ console.warn('Cloud delete failed', e); }
+}
+
+async function ensureStorageBucket(){ /* no-op: images stored in DB now */ }
+
+// Auto-sync after every save
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function save(){
+  localStorage.setItem('cv_cards', JSON.stringify(cards));
+  // Debounced cloud sync  don't hammer Supabase on rapid changes
+  clearTimeout(save._timer);
+  save._timer = setTimeout(()=>{
+    if(isSupabaseConnected()) syncNow();
+  }, 3000);
+}
+function getApiKey(){ return localStorage.getItem('cv_apikey') || ''; }
+function openLink(url){ window.open(url,'_blank'); }
+
+// -- SETTINGS SYNC ─────────────────────────────────────────────
+const SETTINGS_KEYS = [
+  'cv_apikey',
+  'cv_ebay_appid', 'cv_ebay_certid', 'cv_ebay_runame',
+  'cv_ebay_token', 'cv_ebay_refresh_token', 'cv_ebay_token_expiry',
+  'cv_zip', 'cv_ship_single', 'cv_ship_lot',
+  'cv_default_type', 'cv_default_duration',
+  'cv_view', 'cv_sort',
+];
+
+async function saveSettings(){
+  if(!currentUser || !isSupabaseConnected()) return;
+  const data = {};
+  SETTINGS_KEYS.forEach(k => { const v = localStorage.getItem(k); if(v) data[k] = v; });
+  try{
+    const sb = getSB();
+    if(sb) await sb.from('settings').upsert({ user_id: currentUser.id, data, updated_at: new Date().toISOString() });
+  } catch(e){ console.warn('Settings save failed', e); }
+}
+
+async function loadSettings(){
+  if(!currentUser || !isSupabaseConnected()) return;
+  try{
+    const sb = getSB();
+    if(!sb) return;
+    const { data, error } = await sb.from('settings').select('data').eq('user_id', currentUser.id).single();
+    if(error || !data) return;
+    // Apply settings to localStorage
+    Object.entries(data.data || {}).forEach(([k, v]) => {
+      if(SETTINGS_KEYS.includes(k) && v) localStorage.setItem(k, v);
+    });
+    // Re-apply eBay listing state defaults
+    ebayListingState.type = localStorage.getItem('cv_default_type') || 'auction';
+    ebayListingState.duration = parseInt(localStorage.getItem('cv_default_duration') || '5');
+    console.log('✓ Settings loaded from cloud');
+  } catch(e){ console.warn('Settings load failed', e); }
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+function saveApiKey(){
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if(!val){ showToast('Please enter your API key'); return; }
+  localStorage.setItem('cv_apikey', val);
+  showToast('✓ API key saved');
+  saveSettings();
+}
+
+function showView(name){
+  prevView = currentView === 'detail' ? prevView : currentView;
+  currentView = name;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(name==='catalog'){ document.getElementById('viewCatalog').classList.add('active'); document.getElementById('navCatalog').classList.add('active'); renderGrid(); }
+  else if(name==='hot'){ document.getElementById('viewHot').classList.add('active'); document.getElementById('navHot').classList.add('active'); loadHotCards(false); }
+  else if(name==='detail'){ document.getElementById('viewDetail').classList.add('active'); }
+  else if(name==='settings'){ document.getElementById('viewSettings').classList.add('active'); document.getElementById('navSettings').classList.add('active'); document.getElementById('apiKeyInput').value=getApiKey(); onSettingsOpen(); }
+}
+
+function goBack(){ showView(prevView||'catalog'); }
+
+function updateStats(){
+  const unsold = cards.filter(c=>!c.sold);
+  document.getElementById('statTotal').textContent = cards.length;
+  document.getElementById('statValue').textContent = '$' + unsold.reduce((a,c)=>a+(c.priceMid||c.priceMin||0),0).toLocaleString();
+  document.getElementById('statRC').textContent = cards.filter(c=>c.rookie&&!c.sold).length;
+  // Update sold count badge if it exists
+  const soldEl = document.getElementById('statSold');
+  if(soldEl) soldEl.textContent = cards.filter(c=>c.sold).length;
+}
+
+function getHotSet(){
+  if(!hotData||!hotData.cards) return new Set();
+  return new Set(hotData.cards.map(c=>(c.player||'').toLowerCase()));
+}
+
+function renderGrid(){
+  const grid = document.getElementById('cardsGrid');
+  const hotSet = getHotSet();
+  updateViewToggleBtn();
+
+  let list;
+  if(currentFilter==='sold') list = cards.filter(c=>c.sold);
+  else if(currentFilter==='all') list = cards.filter(c=>!c.sold);
+  else list = cards.filter(c=>c.sport===currentFilter&&!c.sold);
+
+  list = sortCards(list);
+
+  if(!list.length){
+    grid.className='cards-grid'; grid.style.display='';
+    grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🃏</div><h3>${cards.length?'No cards here':'Collection is empty'}</h3><p>${cards.length?'Try another filter':'Tap Add Card to photograph your first card'}</p></div>`;
+    return;
+  }
+
+  // List view
+  if(viewMode==='list' && !lotMode){
+    grid.className=''; grid.style.display='block';
+    grid.innerHTML=renderListView(list, hotSet);
+    return;
+  }
+
+  // Grid view
+  grid.className='cards-grid'; grid.style.display='';
+  grid.innerHTML = list.map(c=>{
+    const hot = hotSet.has((c.player||'').toLowerCase());
+    const badge = c.parallel ? `<div class="parallel-badge ${getBadgeClass(c.parallel)}">${c.parallel}</div>` : '';
+    const rc = c.rookie ? '<div class="badge-rc">RC</div>' : '';
+    const fire = hot && !lotMode && !c.sold ? '<div class="fire-badge">🔥 HOT</div>' : '';
+    const soldBadge = c.sold ? `<div style="position:absolute;bottom:5px;right:5px;background:var(--green);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px">✓ SOLD${c.soldPrice?' $'+c.soldPrice:''}</div>` : '';
+    const imgSrc = c.imgData || c.cloudImgUrl || null;
+    const img = imgSrc ? `<img src="${imgSrc}" alt="">` : '<div class="card-img-placeholder">🃏</div>';
+    const chips = [c.numbered,c.grade,c.auto?'Auto':null,c.relic?'Relic':null].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('');
+
+    if(lotMode){
+      const sel = lotSelected.has(c.id);
+      const check = sel ? `<div class="lot-check">✓</div>` : `<div class="lot-check-empty"></div>`;
+      return `<div class="card-thumb lot-selectable${sel?' lot-selected':''}" onclick="toggleLotCard('${c.id}',event)">
+        <div class="card-img-wrap">${img}${badge}${rc}${check}</div>
+        <div class="card-info">
+          <div class="card-name">${c.player||'Identifying...'}</div>
+          <div class="card-meta">${[c.year,c.brand].filter(Boolean).join(' · ')||c.team||''}</div>
+          <div class="card-chips">${chips}</div>
+        </div>
+      </div>`;
+    }
+
+    return `<div class="card-thumb${hot&&!c.sold?' hot-card':''}${c.sold?' sold-card':''}" onclick="openDetail('${c.id}')">
+      <div class="card-img-wrap">${img}${badge}${rc}${fire}${soldBadge}</div>
+      <div class="card-info">
+        <div class="card-name">${c.player||'Identifying...'}</div>
+        <div class="card-meta">${[c.year,c.brand].filter(Boolean).join(' · ')||c.team||''}</div>
+        <div class="card-chips">${chips}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getBadgeClass(p){
+  const l=(p||'').toLowerCase();
+  if(l.includes('gold')) return 'badge-gold';
+  if(l.includes('silver')||l.includes('refract')) return 'badge-silver';
+  return 'badge-base';
+}
+
+function filterCards(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function handleFiles(files){
+  const arr=Array.from(files);
+  if(!arr.length) return;
+  const key=getApiKey();
+  if(!key){ showToast(' Add your API key in Settings first'); showView('settings'); return; }
+  document.getElementById('fileInput').value='';
+  (async()=>{ for(const f of arr){ const d=await readFile(f); await analyzeCard(d,f.name,key); } })();
+}
+
+function readFile(f){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=()=>rej(); r.readAsDataURL(f); });
+}
+
+async function analyzeCard(imgData, filename, key){
+  const ov=document.getElementById('analyzingOverlay');
+  document.getElementById('analyzingText').textContent='Analyzing '+filename;
+  ov.classList.remove('hidden');
+  const base64=imgData.split(',')[1];
+  const mime=imgData.split(';')[0].split(':')[1];
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mime,data:base64}},
+          {type:'text',text:`You are a sports card expert. Analyze this card image and return ONLY a valid JSON object, no markdown or explanation:
+{"player":"Full name","team":"Team name","sport":"Baseball|Basketball|Football|Hockey|Soccer","year":"year string","brand":"e.g. Panini Prizm or Topps Chrome","set":"set name","parallel":"e.g. Gold Prizm or Silver or null","numbered":"e.g. /99 or null","rookie":true or false,"auto":true or false,"relic":true or false,"grade":"e.g. PSA 9 or null","condition":"Gem Mint|Near Mint|Good|Fair","priceMin":integer USD,"priceMax":integer USD,"priceMid":integer USD,"ebayTitle":"eBay optimized title under 80 chars","ebayDesc":"2-3 sentence eBay description"}`}
+        ]}]
+      })
+    });
+    const data=await resp.json();
+    if(data.error){ showToast('API error: '+data.error.message); return; }
+    let info={};
+    try{ const raw=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join(''); info=JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+    catch(e){ info={player:'Unknown Card',sport:'Baseball',priceMin:5,priceMax:20,priceMid:10,condition:'Near Mint',ebayTitle:'Sports Card',ebayDesc:'Sports card in good condition.'}; }
+
+    // Compress image before saving
+    const compressed = await compressImage(imgData, 200);
+    const card={id:uid(), imgData: compressed || imgData, ...info};
+    cards.push(card);
+    save(); updateStats(); renderGrid();
+    showToast('✓ Identified: '+(info.player||'Card'));
+    openDetail(card.id);
+  } catch(e){ showToast('Error  check API key in Settings'); console.error(e); }
+  finally{ ov.classList.add('hidden'); }
+}
+
+function openDetail(id){
+  const c=cards.find(x=>x.id===id);
+  if(!c) return;
+  const hotSet=getHotSet();
+  const isHot=hotSet.has((c.player||'').toLowerCase());
+  const hotInfo=hotData&&hotData.cards?hotData.cards.find(x=>(x.player||'').toLowerCase()===(c.player||'').toLowerCase()):null;
+  document.getElementById('detailTitle').textContent=c.player||'Card Detail';
+  document.getElementById('detailHotIcon').textContent=isHot?'🔥':'';
+  const imgSrc = c.imgData || c.cloudImgUrl || null;
+  console.log('openDetail imgSrc:', imgSrc ? imgSrc.substring(0,40)+'...('+imgSrc.length+'chars)' : 'NULL', '| imgData:', !!c.imgData, '| cloudImgUrl:', !!c.cloudImgUrl);
+  const img=imgSrc?`<img src="${imgSrc}" alt="">`:'<div class="detail-img-placeholder">🃏</div>';
+  const hotBox=isHot&&hotInfo?`<div class="hot-alert-box"><div class="hot-alert-title">🔥 This card is HOT right now</div><div class="hot-alert-body"><strong>${hotInfo.reason}</strong> — ${hotInfo.news}${hotInfo.sellWindow?'<br><br><strong>Sell window:</strong> '+hotInfo.sellWindow:''}</div></div>`:'';
+  const fields=[['Player',c.player],['Team',c.team],['Sport',c.sport],['Year',c.year],['Brand',c.brand],['Set',c.set],['Parallel',c.parallel],['Numbered',c.numbered],['Rookie',c.rookie?'Yes':null],['Auto',c.auto?'Yes':null],['Relic',c.relic?'Yes':null],['Grade',c.grade],['Condition',c.condition]]
+    .filter(([,v])=>v!=null)
+    .map(([k,v])=>`<div class="field"><span class="field-key">${k}</span><span class="field-val">${v}</span></div>`).join('');
+  const priceNote=isHot?` <span style="color:var(--orange);font-size:10px">↑ trending</span>`:'';
+
+  // Cost & profit calculations
+  const costBasis=c.costBasis!=null?`$${c.costBasis}`:'—';
+  const profit=c.sold&&c.soldPrice!=null&&c.costBasis!=null?c.soldPrice-c.costBasis:null;
+  const profitColor=profit!=null?(profit>=0?'var(--green)':'var(--red)'):'';
+  const profitLabel=profit!=null?`${profit>=0?'+':''}$${profit.toFixed(2)}`:'';
+  const unrealized=(c.priceMid||c.priceMin||0)-(c.costBasis||0);
+
+  // Sold banner
+  const soldBanner=c.sold?`
+    <div style="background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:2px">✓ Sold${c.soldDate?' on '+new Date(c.soldDate).toLocaleDateString():''}</div>
+        <div style="font-size:12px;color:var(--text2)">Sale price: <span style="color:var(--text);font-weight:600;font-family:'DM Mono',monospace">$${c.soldPrice||0}</span>${profitLabel?' · P&L: <span style="color:'+profitColor+';font-weight:600;font-family:\'DM Mono\',monospace">'+profitLabel+'</span>':''}</div>
+      </div>
+      <button onclick="markUnsold('${id}')" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);font-size:11px;cursor:pointer;font-family:'Sora',sans-serif">Undo</button>
+    </div>`:'';
+
+  document.getElementById('detailScroll').innerHTML=`
+    <div class="detail-img-wrap">${img}</div>
+    ${soldBanner}
+    ${hotBox}
+    <div class="section"><div class="section-label">Card details</div><div class="fields">${fields}</div></div>
+
+    <div class="section">
+      <div class="section-label">Financials</div>
+      <div class="fields">
+        <div class="field">
+          <span class="field-key">Purchase price</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="field-val" id="costDisplay">${costBasis}</span>
+            <button onclick="editCost('${id}')" style="font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);cursor:pointer;font-family:'Sora',sans-serif">${c.costBasis!=null?'Edit':'Add'}</button>
+          </div>
+        </div>
+        ${c.priceMid||c.priceMin?`<div class="field"><span class="field-key">Est. sell value</span><span class="field-val" style="color:var(--green)">$${c.priceMid||c.priceMin||0}</span></div>`:''}
+        ${c.costBasis!=null&&(c.priceMid||c.priceMin)?`<div class="field"><span class="field-key">Unrealized gain</span><span class="field-val" style="color:${unrealized>=0?'var(--green)':'var(--red)'}">${unrealized>=0?'+':''}$${unrealized.toFixed(2)}</span></div>`:''}
+      </div>
+    </div>
+
+    <div class="section"><div class="section-label">eBay listing</div>
+    <div class="ebay-box">
+      <div class="ebay-title-text">${c.ebayTitle||'—'}</div>
+      <div class="ebay-desc">${c.ebayDesc||'—'}</div>
+      <div class="price-row">
+        <div><div class="price-label">Suggested price${priceNote}</div><div class="price-range">$${c.priceMin||0}–$${c.priceMax||0} range</div></div>
+        <div class="price-val">$${c.priceMid||c.priceMin||0}</div>
+      </div>
+      ${!c.sold?`<button class="list-btn" onclick="openEbayModal('${id}')"><span class="list-btn-icon">🛒</span> List on eBay</button>`:''}
+      ${!c.sold?`<button onclick="openMarkSold('${id}')" style="width:100%;padding:11px;border-radius:8px;border:1px solid rgba(76,175,125,.3);background:rgba(76,175,125,.08);color:var(--green);font-size:13px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:8px">✓ Mark as Sold</button>`:''}
+      <button class="copy-btn" onclick="copyListing('${id}')">Copy title + description</button>
+      <button class="delete-btn" onclick="deleteCard('${id}')">Remove from catalog</button>
+    </div></div>`;
+  prevView=currentView;
+  showView('detail');
+  selectedCardId = id;
+}
+
+// -- EDIT CARD ─────────────────────────────────────────────────
+let editImgData = null;
+let editImgChanged = false;
+let editSport = 'Baseball';
+let editCardId = null;
+
+function openEditModal(id){
+  const c = cards.find(x=>x.id===id);
+  if(!c) return;
+  editCardId = id;
+  editImgData = c.imgData || c.cloudImgUrl || null;
+  editImgChanged = false;
+  editSport = c.sport || 'Baseball';
+
+  // Populate fields
+  document.getElementById('editPlayer').value = c.player || '';
+  document.getElementById('editYear').value = c.year || '';
+  document.getElementById('editTeam').value = c.team || '';
+  document.getElementById('editBrand').value = c.brand || '';
+  document.getElementById('editParallel').value = c.parallel || '';
+  document.getElementById('editNumbered').value = c.numbered || '';
+  document.getElementById('editGrade').value = c.grade || c.condition || '';
+  document.getElementById('editRookie').checked = !!c.rookie;
+  document.getElementById('editAuto').checked = !!c.auto;
+  document.getElementById('editRelic').checked = !!c.relic;
+  document.getElementById('editPriceMin').value = c.priceMin || '';
+  document.getElementById('editPriceMax').value = c.priceMax || '';
+  document.getElementById('editNotes').value = c.notes || '';
+
+  // Sport buttons
+  document.querySelectorAll('#editSportBtns .sport-btn').forEach(b=>{
+    b.classList.toggle('selected', b.textContent.includes({Baseball:'⚾',Basketball:'🏀',Football:'🏈',Hockey:'🏒',Soccer:'⚽'}[editSport]||''));
+  });
+
+  // Photo preview
+  const preview = document.getElementById('editPhotoPreview');
+  if(editImgData){
+    preview.innerHTML = `<img src="${editImgData}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    preview.innerHTML = '🃏';
+  }
+
+  document.getElementById('editModal').classList.remove('hidden');
+}
+
+function closeEditModal(){
+  document.getElementById('editModal').classList.add('hidden');
+  editImgData = null;
+  editImgChanged = false;
+  editCardId = null;
+}
+document.getElementById('editModal').addEventListener('click', function(e){ if(e.target===this) closeEditModal(); });
+
+function handleEditPhoto(input){
+  const file = input.files[0];
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    editImgData = e.target.result;
+    editImgChanged = true;
+    const preview = document.getElementById('editPhotoPreview');
+    preview.innerHTML = `<img src="${editImgData}" style="width:100%;height:100%;object-fit:cover">`;
+  };
+  r.readAsDataURL(file);
+  input.value = '';
+}
+
+function removeEditPhoto(){
+  editImgData = null;
+  editImgChanged = true;
+  document.getElementById('editPhotoPreview').innerHTML = '🃏';
+}
+
+function selectEditSport(sport, el){
+  editSport = sport;
+  document.querySelectorAll('#editSportBtns .sport-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function saveEditCard(){
+  const idx = cards.findIndex(x=>x.id===editCardId);
+  if(idx<0) return;
+
+  const player = document.getElementById('editPlayer').value.trim();
+  if(!player){ showToast('Player name is required'); return; }
+
+  const priceMin = parseFloat(document.getElementById('editPriceMin').value) || null;
+  const priceMax = parseFloat(document.getElementById('editPriceMax').value) || null;
+  const priceMid = priceMin && priceMax ? Math.round((priceMin+priceMax)/2) : (priceMin||priceMax||null);
+  const grade = document.getElementById('editGrade').value.trim() || null;
+
+  // Compress new image if changed
+  let imgData = cards[idx].imgData;
+  if(editImgChanged){
+    if(editImgData){
+      imgData = await compressImage(editImgData, 200) || editImgData;
+    } else {
+      imgData = null;
+    }
+  }
+
+  const updated = {
+    ...cards[idx],
+    player,
+    team: document.getElementById('editTeam').value.trim() || null,
+    sport: editSport,
+    year: document.getElementById('editYear').value.trim() || null,
+    brand: document.getElementById('editBrand').value.trim() || null,
+    parallel: document.getElementById('editParallel').value.trim() || null,
+    numbered: document.getElementById('editNumbered').value.trim() || null,
+    grade,
+    condition: grade || cards[idx].condition || 'Near Mint or Better',
+    rookie: document.getElementById('editRookie').checked,
+    auto: document.getElementById('editAuto').checked,
+    relic: document.getElementById('editRelic').checked,
+    priceMin, priceMax, priceMid,
+    notes: document.getElementById('editNotes').value.trim() || null,
+    imgData,
+    cloudImgUrl: editImgChanged ? null : cards[idx].cloudImgUrl, // reset cloud URL if image changed
+    // Regenerate eBay title
+    ebayTitle: generateEbayTitle({player, year: document.getElementById('editYear').value.trim(), brand: document.getElementById('editBrand').value.trim(), parallel: document.getElementById('editParallel').value.trim(), numbered: document.getElementById('editNumbered').value.trim(), rookie: document.getElementById('editRookie').checked, auto: document.getElementById('editAuto').checked, grade, team: document.getElementById('editTeam').value.trim()}),
+  };
+
+  cards[idx] = updated;
+  save();
+  updateStats();
+  renderGrid();
+  closeEditModal();
+  showToast('✓ Card updated');
+  openDetail(editCardId);
+}
+
+function editCost(id){
+  const c=cards.find(x=>x.id===id);
+  if(!c) return;
+  const val=prompt('What did you pay for this card? ($):', c.costBasis!=null?c.costBasis:'');
+  if(val===null) return;
+  const num=parseFloat(val);
+  if(isNaN(num)||num<0){ showToast('Enter a valid price'); return; }
+  const idx=cards.findIndex(x=>x.id===id);
+  if(idx>=0){ cards[idx].costBasis=num; save(); }
+  showToast('✓ Purchase price saved');
+  openDetail(id);
+}
+
+function openMarkSold(id){
+  const c=cards.find(x=>x.id===id);
+  if(!c) return;
+  const val=prompt(`What did you sell ${c.player||'this card'} for? ($):`, c.soldPrice||c.priceMid||'');
+  if(val===null) return;
+  const num=parseFloat(val);
+  if(isNaN(num)||num<0){ showToast('Enter a valid price'); return; }
+  const idx=cards.findIndex(x=>x.id===id);
+  if(idx>=0){ cards[idx].sold=true; cards[idx].soldPrice=num; cards[idx].soldDate=new Date().toISOString(); save(); updateStats(); }
+  showToast('✓ Marked as sold for $'+num);
+  openDetail(id);
+}
+
+function markUnsold(id){
+  if(!confirm('Mark this card as unsold?')) return;
+  const idx=cards.findIndex(x=>x.id===id);
+  if(idx>=0){ delete cards[idx].sold; delete cards[idx].soldPrice; delete cards[idx].soldDate; save(); updateStats(); }
+  showToast('Marked as unsold');
+  openDetail(id);
+}
+
+function copyListing(id){
+  const c=cards.find(x=>x.id===id);
+  if(!c) return;
+  navigator.clipboard.writeText(`TITLE:\n${c.ebayTitle}\n\nDESCRIPTION:\n${c.ebayDesc}\n\nSuggested price: $${c.priceMid||c.priceMin} (range: $${c.priceMin}$${c.priceMax})`)
+    .then(()=>showToast(' Copied!')).catch(()=>showToast('Copy failed  try selecting manually'));
+}
+
+function deleteCard(id){
+  if(!confirm('Remove this card from your catalog?')) return;
+  cards=cards.filter(c=>c.id!==id);
+  save(); updateStats();
+  deleteCardFromCloud(id);
+  showToast('Card removed');
+  showView(prevView||'catalog');
+}
+
+async function loadHotCards(force){
+  const key=getApiKey();
+  if(!key){
+    document.getElementById('hotContent').innerHTML=`<div class="empty-state"><div class="empty-icon"></div><h3>API key needed</h3><p>Add your Anthropic API key in Settings to enable market trend tracking</p></div>`;
+    return;
+  }
+  const TWO_HOURS=2*60*60*1000;
+  if(!force && hotData && (Date.now()-hotLastFetch)<TWO_HOURS){ renderHotCards(); return; }
+  document.getElementById('hotContent').innerHTML=`<div class="hot-loading"><div class="hot-spinner"></div><p>Scanning player news &amp; market momentum...</p></div>`;
+  const myPlayers=[...new Set(cards.map(c=>c.player).filter(Boolean))];
+  const myList=myPlayers.length?`Cards in my collection: ${myPlayers.slice(0,25).join(', ')}.`:'My collection is currently empty.';
+  const today=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:2000,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:`You are a sports card market expert. Today is ${today}. Use web search to find current sports news and identify cards that are hot right now.
+
+${myList}
+
+Search for: recent big performances, awards, trades, call-ups, records broken, playoff/championship impact, and eBay sales surges. Prioritize players from my collection if they qualify, then fill the rest with the hottest cards on the market.
+
+Return ONLY a valid JSON object with no markdown:
+{"lastUpdated":"${today}","cards":[{"player":"Full name","team":"Current team","sport":"Baseball|Basketball|Football|Hockey","reason":"Short hot reason (5 words max)","news":"1-2 sentences on exactly why this card is surging right now with specific recent event","priceChange":"e.g. +30% this week","momentum":"high|medium","inMyCollection":true or false,"sellWindow":"Now|This week|Hold  with brief explanation"}]}`}]
+      })
+    });
+    const data=await resp.json();
+    if(data.error) throw new Error(data.error.message);
+    let info=null;
+    try{
+      const raw=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+      const m=raw.match(/\{[\s\S]*\}/);
+      if(m) info=JSON.parse(m[0]);
+    } catch(e){ console.error('parse',e); }
+    if(!info||!info.cards) throw new Error('Could not parse response');
+    hotData=info;
+    hotLastFetch=Date.now();
+    localStorage.setItem('cv_hot',JSON.stringify(hotData));
+    localStorage.setItem('cv_hot_ts',hotLastFetch.toString());
+    const hasOwned=info.cards.some(c=>c.inMyCollection);
+    document.getElementById('hotDot').classList.toggle('show',hasOwned);
+    renderGrid();
+    renderHotCards();
+  } catch(e){
+    document.getElementById('hotContent').innerHTML=`<div class="empty-state"><div class="empty-icon"></div><h3>Couldn't load trends</h3><p>${e.message||'Check your connection and API key, then try again'}</p></div>`;
+    console.error(e);
+  }
+}
+
+function renderHotCards(){
+  if(!hotData||!hotData.cards){ document.getElementById('hotContent').innerHTML=`<div class="empty-state"><div class="empty-icon"></div><h3>No data yet</h3><p>Tap Refresh to scan the market</p></div>`; return; }
+  const mine=hotData.cards.filter(c=>c.inMyCollection);
+  const others=hotData.cards.filter(c=>!c.inMyCollection);
+  let html=`<div class="hot-updated">Updated ${hotData.lastUpdated||'recently'}</div>`;
+  if(mine.length){ html+=`<div class="hot-section-label"> In your collection</div>`+mine.map(c=>hotRowHTML(c)).join(''); }
+  if(others.length){ html+=`<div class="hot-section-label" style="margin-top:${mine.length?'18':'4'}px"> Trending now</div>`+others.map(c=>hotRowHTML(c)).join(''); }
+  document.getElementById('hotContent').innerHTML=html;
+}
+
+function hotRowHTML(c){
+  const cc=cards.find(x=>(x.player||'').toLowerCase()===(c.player||'').toLowerCase());
+  const thumb=cc&&cc.imgData?`<img src="${cc.imgData}" alt="">`:{Baseball:'',Basketball:'',Football:'',Hockey:'',Soccer:''}[c.sport]||'';
+  const momChip=c.momentum==='high'?`<span class="hot-chip chip-hot"> High</span>`:`<span class="hot-chip chip-up"> Rising</span>`;
+  const sellChip=c.sellWindow&&c.sellWindow.startsWith('Now')?`<span class="hot-chip chip-up"> Sell now</span>`:c.sellWindow&&c.sellWindow.startsWith('Hold')?`<span class="hot-chip chip-neutral"> Hold</span>`:`<span class="hot-chip chip-up"> Sell soon</span>`;
+  const onclick=cc?`onclick="openDetail('${cc.id}')"`:'';
+  return `<div class="hot-card-row${c.inMyCollection?' in-collection':''}" ${onclick}>
+    <div class="hot-thumb">${thumb}</div>
+    <div class="hot-card-body">
+      <div class="hot-card-name">${c.player}</div>
+      <div class="hot-card-reason"> ${c.reason}</div>
+      <div class="hot-card-news">${c.news}</div>
+      <div class="hot-card-meta">${momChip}${c.priceChange?`<span class="hot-chip chip-up">${c.priceChange}</span>`:''}${sellChip}<span class="hot-chip chip-neutral">${c.sport}</span></div>
+    </div>
+    ${c.inMyCollection?'<span class="own-badge">In vault</span>':''}
+  </div>`;
+}
+
+function exportCatalog(){
+  // Build CSV
+  const headers = ['Player','Team','Sport','Year','Brand','Set','Parallel','Numbered','Rookie','Auto','Relic','Grade','Condition','Purchase Price','Est. Value (Low)','Est. Value (Mid)','Est. Value (High)','Unrealized Gain','Status','Sale Price','Sale Date','Realized P&L','eBay Listing ID','Notes'];
+
+  const esc = v => {
+    if(v==null) return '';
+    const s = String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+
+  const rows = cards.map(c => {
+    const cost = c.costBasis!=null ? c.costBasis : null;
+    const mid = c.priceMid || c.priceMin || null;
+    const unrealized = cost!=null && mid!=null ? (mid - cost).toFixed(2) : '';
+    const realizedPL = c.sold && c.soldPrice!=null && cost!=null ? (c.soldPrice - cost).toFixed(2) : '';
+    return [
+      c.player, c.team, c.sport, c.year, c.brand, c.set, c.parallel, c.numbered,
+      c.rookie?'Yes':'No', c.auto?'Yes':'No', c.relic?'Yes':'No',
+      c.grade, c.condition,
+      cost!=null?cost:'', c.priceMin||'', mid||'', c.priceMax||'',
+      unrealized,
+      c.sold?'Sold':'In collection',
+      c.soldPrice||'',
+      c.soldDate?new Date(c.soldDate).toLocaleDateString():'',
+      realizedPL,
+      c.ebayListingId||'',
+      c.notes||''
+    ].map(esc).join(',');
+  });
+
+  // Summary rows
+  const totalCards = cards.length;
+  const soldCards = cards.filter(c=>c.sold);
+  const unsoldCards = cards.filter(c=>!c.sold);
+  const totalCost = cards.reduce((a,c)=>a+(c.costBasis||0),0);
+  const totalSoldRevenue = soldCards.reduce((a,c)=>a+(c.soldPrice||0),0);
+  const totalSoldCost = soldCards.reduce((a,c)=>a+(c.costBasis||0),0);
+  const realizedPL = totalSoldRevenue - totalSoldCost;
+  const estUnsoldValue = unsoldCards.reduce((a,c)=>a+(c.priceMid||c.priceMin||0),0);
+  const unsoldCost = unsoldCards.reduce((a,c)=>a+(c.costBasis||0),0);
+  const unrealizedPL = estUnsoldValue - unsoldCost;
+
+  const summaryRows = [
+    '',
+    '"--- SUMMARY ---"',
+    `"Total cards","${totalCards}"`,
+    `"Total cards sold","${soldCards.length}"`,
+    `"Total cards in collection","${unsoldCards.length}"`,
+    `"Total amount invested","$${totalCost.toFixed(2)}"`,
+    `"Total sold revenue","$${totalSoldRevenue.toFixed(2)}"`,
+    `"Realized P&L (sold cards)","${realizedPL>=0?'+':''}$${realizedPL.toFixed(2)}"`,
+    `"Est. unsold collection value","$${estUnsoldValue.toFixed(2)}"`,
+    `"Unrealized P&L (unsold cards)","${unrealizedPL>=0?'+':''}$${unrealizedPL.toFixed(2)}"`,
+    `"Total P&L","${(realizedPL+unrealizedPL)>=0?'+':''}$${(realizedPL+unrealizedPL).toFixed(2)}"`,
+    `"Export date","${new Date().toLocaleDateString()}"`,
+  ];
+
+  const csv = [headers.join(','), ...rows, ...summaryRows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url;
+  a.download=`cardvault-export-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ CSV exported');
+}
+
+function clearAll(){
+  if(!confirm('Delete all '+cards.length+' cards? This cannot be undone.')) return;
+  cards=[]; save(); updateStats(); renderGrid();
+  showToast('Catalog cleared');
+  showView('catalog');
+}
+
+// -- ADD CARD MODAL --------------------------------------------
+let manualImgData = null;
+let manualImgDataAll = [];
+let manualSport = 'Baseball';
+let manualCondition = '';
+
+function openAddModal(){ document.getElementById('addModal').classList.remove('hidden'); }
+function closeAddModal(){ document.getElementById('addModal').classList.add('hidden'); }
+document.getElementById('addModal').addEventListener('click', function(e){ if(e.target===this) closeAddModal(); });
+
+function chooseAiScan(){
+  closeAddModal();
+  document.getElementById('fileInput').click();
+}
+
+function chooseManual(imgData){
+  closeAddModal();
+  resetManualForm();
+  // Set AFTER reset so it doesn't get wiped
+  if(imgData){
+    manualImgData = imgData;
+    showManualPhotoPreview(imgData);
+  }
+  document.getElementById('manualModal').classList.remove('hidden');
+}
+
+function chooseManualWithPhoto(){
+  closeAddModal();
+  document.getElementById('manualFileInput').click();
+}
+
+function handleManualPhoto(input){
+  const files = Array.from(input.files);
+  if(!files.length) return;
+
+  // Read all files
+  const readers = files.map(file => new Promise(res => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.readAsDataURL(file);
+  }));
+
+  Promise.all(readers).then(results => {
+    // Use first image as primary, store all
+    const imgData = results[0];
+    const imgDataAll = results;
+
+    // Open manual form if not already open — reset BEFORE setting image
+    if(document.getElementById('manualModal').classList.contains('hidden')){
+      resetManualForm();
+      document.getElementById('manualModal').classList.remove('hidden');
+    }
+
+    // Set AFTER reset so it doesn't get wiped
+    manualImgData = imgData;
+    manualImgDataAll = imgDataAll;
+    showManualPhotoPreview(results);
+  });
+  input.value = '';
+}
+
+function showManualPhotoPreview(imgDataArr){
+  const arr = Array.isArray(imgDataArr) ? imgDataArr : [imgDataArr];
+  const preview = document.getElementById('manualPhotoPreview');
+  if(arr.length === 1){
+    preview.innerHTML = `<img src="${arr[0]}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+    preview.style.width = '80px';
+  } else {
+    // Show a small grid of thumbnails
+    preview.style.width = '100%';
+    preview.style.height = 'auto';
+    preview.style.flexWrap = 'wrap';
+    preview.style.gap = '4px';
+    preview.style.padding = '4px';
+    preview.innerHTML = arr.map((d,i) => `<img src="${d}" style="width:${arr.length<=4?'calc(50% - 2px)':'calc(33% - 2px)'};aspect-ratio:3/4;object-fit:cover;border-radius:5px${i===0?';border:2px solid var(--gold)':''}" title="${i===0?'Primary photo':'Photo '+(i+1)}">`).join('') +
+      `<div style="width:100%;font-size:9px;color:var(--text3);margin-top:2px">${arr.length} photos · first is primary</div>`;
+  }
+  preview.onclick = () => document.getElementById('manualFileInput').click();
+}
+
+function resetManualForm(){
+  manualImgData = null;
+  manualImgDataAll = [];
+  manualSport = 'Baseball';
+  manualCondition = '';
+  ['mPlayer','mYear','mTeam','mBrand','mParallel','mNumbered','mGrade','mPriceMin','mPriceMax','mNotes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['mRookie','mAuto','mRelic'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
+  document.querySelectorAll('.sport-btn').forEach((b,i) => b.classList.toggle('selected', i===0));
+  document.querySelectorAll('#manualModal .condition-btn').forEach(b => b.classList.remove('selected'));
+  const preview = document.getElementById('manualPhotoPreview');
+  preview.innerHTML = '📷<div style="font-size:9px">Add photo</div>';
+  preview.style.width = '80px';
+  preview.style.height = '104px';
+  preview.onclick = () => document.getElementById('manualFileInput').click();
+}
+
+function closeManualModal(){
+  document.getElementById('manualModal').classList.add('hidden');
+  manualImgData = null;
+  manualImgDataAll = [];
+}
+document.getElementById('manualModal').addEventListener('click', function(e){ if(e.target===this) closeManualModal(); });
+
+function selectSport(sport, el){
+  manualSport = sport;
+  document.querySelectorAll('.sport-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selectCondition(cond, el){
+  manualCondition = cond;
+  document.querySelectorAll('#manualModal .condition-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  // Also fill the grade input if it's a grade code
+  const gradeInput = document.getElementById('mGrade');
+  if(gradeInput && !gradeInput.value) gradeInput.value = cond.includes('PSA')||cond.includes('BGS') ? cond : '';
+}
+
+function saveManualCard(){
+  const player = document.getElementById('mPlayer').value.trim();
+  if(!player){ showToast('Please enter a player name'); return; }
+
+  const priceMin = parseFloat(document.getElementById('mPriceMin').value) || 0;
+  const priceMax = parseFloat(document.getElementById('mPriceMax').value) || 0;
+  const priceMid = priceMin && priceMax ? Math.round((priceMin + priceMax) / 2) : (priceMin || priceMax || 0);
+  const grade = document.getElementById('mGrade').value.trim() || null;
+  const condition = manualCondition || (grade ? grade : 'Near Mint');
+
+  const card = {
+    id: uid(),
+    imgData: manualImgData || null,
+    player,
+    team: document.getElementById('mTeam').value.trim() || null,
+    sport: manualSport,
+    year: document.getElementById('mYear').value.trim() || null,
+    brand: document.getElementById('mBrand').value.trim() || null,
+    set: null,
+    parallel: document.getElementById('mParallel').value.trim() || null,
+    numbered: document.getElementById('mNumbered').value.trim() || null,
+    rookie: document.getElementById('mRookie').checked,
+    auto: document.getElementById('mAuto').checked,
+    relic: document.getElementById('mRelic').checked,
+    grade,
+    condition,
+    priceMin: priceMin || null,
+    priceMax: priceMax || null,
+    priceMid: priceMid || null,
+    notes: document.getElementById('mNotes').value.trim() || null,
+    ebayTitle: generateEbayTitle({player, year: document.getElementById('mYear').value.trim(), brand: document.getElementById('mBrand').value.trim(), parallel: document.getElementById('mParallel').value.trim(), numbered: document.getElementById('mNumbered').value.trim(), rookie: document.getElementById('mRookie').checked, auto: document.getElementById('mAuto').checked, grade, team: document.getElementById('mTeam').value.trim()}),
+    ebayDesc: `${player}${document.getElementById('mYear').value?' '+document.getElementById('mYear').value:''}${document.getElementById('mBrand').value?' '+document.getElementById('mBrand').value:''} sports card${document.getElementById('mRookie').checked?' rookie card':''}${document.getElementById('mAuto').checked?', autographed':''}${document.getElementById('mRelic').checked?', with relic/patch':''}. Condition: ${condition}.${document.getElementById('mNotes').value?' '+document.getElementById('mNotes').value:''}`,
+    manualEntry: true,
+  };
+
+  // Compress image before saving if present
+  if(manualImgData){
+    console.log('manualImgData present, length:', manualImgData.length, 'type:', manualImgData.substring(0,30));
+    compressImage(manualImgData, 200).then(compressed => {
+      const finalImg = compressed || manualImgData;
+      console.log('compressed length:', finalImg.length);
+      card.imgData = finalImg;
+      cards.push(card);
+      localStorage.setItem('cv_cards', JSON.stringify(cards));
+      // verify it saved
+      const saved = JSON.parse(localStorage.getItem('cv_cards'));
+      const savedCard = saved.find(x=>x.id===card.id);
+      console.log('saved card imgData:', savedCard?.imgData ? savedCard.imgData.substring(0,30)+'...('+savedCard.imgData.length+'chars)' : 'NULL');
+      save();
+      updateStats();
+      renderGrid();
+      closeManualModal();
+      showToast('✓ Card saved: ' + player);
+      openDetail(card.id);
+    });
+  } else {
+    console.log('No image — saving without photo');
+    cards.push(card);
+    save();
+    updateStats();
+    renderGrid();
+    closeManualModal();
+    showToast('✓ Card saved: ' + player);
+    openDetail(card.id);
+  }
+}
+
+function generateEbayTitle(c){
+  const parts = [c.year, c.brand, c.player, c.parallel, c.numbered ? c.numbered : '', c.rookie ? 'RC' : '', c.auto ? 'Auto' : '', c.grade || '', c.team].filter(Boolean);
+  let title = parts.join(' ');
+  if(title.length > 80) title = title.substring(0, 77) + '...';
+  return title;
+}
+
+// -- VIEW & SORT ------------------------------------------------
+let viewMode = localStorage.getItem('cv_view') || 'grid';
+let sortOrder = localStorage.getItem('cv_sort') || 'added';
+
+function toggleView(){
+  viewMode = viewMode === 'grid' ? 'list' : 'grid';
+  localStorage.setItem('cv_view', viewMode);
+  const btn = document.getElementById('viewToggleBtn');
+  if(btn) btn.textContent = viewMode === 'grid' ? '⊞' : '☰';
+  renderGrid();
+  renderGrid();
+  saveSettings();
+}
+
+function setSortOrder(val){
+  sortOrder = val;
+  localStorage.setItem('cv_sort', val);
+  renderGrid();
+  renderGrid();
+  saveSettings();
+}
+
+function sortCards(list){
+  const sorted = [...list];
+  switch(sortOrder){
+    case 'player': return sorted.sort((a,b)=>(a.player||'').localeCompare(b.player||''));
+    case 'team':   return sorted.sort((a,b)=>(a.team||'').localeCompare(b.team||''));
+    case 'year':   return sorted.sort((a,b)=>(parseInt(b.year)||0)-(parseInt(a.year)||0));
+    case 'value_high': return sorted.sort((a,b)=>(b.priceMid||b.priceMin||0)-(a.priceMid||a.priceMin||0));
+    case 'value_low':  return sorted.sort((a,b)=>(a.priceMid||a.priceMin||0)-(b.priceMid||b.priceMin||0));
+    case 'sport':  return sorted.sort((a,b)=>(a.sport||'').localeCompare(b.sport||''));
+    default: return sorted;
+  }
+}
+
+function renderListView(list, hotSet){
+  if(!list.length) return `<div class="empty-state"><div class="empty-icon">🃏</div><h3>${cards.length?'No cards here':'Collection is empty'}</h3><p>${cards.length?'Try another filter':'Tap Add Card to get started'}</p></div>`;
+  return `<div class="cards-list">${list.map(c=>{
+    const hot = hotSet.has((c.player||'').toLowerCase());
+    const imgSrc = c.imgData || c.cloudImgUrl || null;
+    const thumb = imgSrc ? `<img src="${imgSrc}" alt="">` : ({Baseball:'⚾',Basketball:'🏀',Football:'🏈',Hockey:'🏒',Soccer:'⚽'}[c.sport]||'🃏');
+    const price = c.sold ? `<span style="color:var(--green);font-size:11px">Sold $${c.soldPrice||0}</span>` : (c.priceMid||c.priceMin ? `<span class="list-price">$${c.priceMid||c.priceMin}</span>` : '');
+    const chips = [c.parallel,c.numbered,c.grade,c.rookie?'RC':null,c.auto?'Auto':null].filter(Boolean).slice(0,3).map(x=>`<span class="chip">${x}</span>`).join('');
+    return `<div class="list-row${hot&&!c.sold?' hot-card':''}${c.sold?' sold-card':''}" onclick="openDetail('${c.id}')">
+      <div class="list-thumb">${thumb}</div>
+      <div class="list-body">
+        <div class="list-name">${c.player||'Unknown'}</div>
+        <div class="list-meta">${[c.team,c.year,c.brand].filter(Boolean).join(' · ')||'No details'}</div>
+      </div>
+      <div class="list-right">
+        ${price}
+        <div class="list-chips">${chips}</div>
+        ${hot&&!c.sold?'<span style="font-size:9px;color:var(--orange)">🔥</span>':''}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function updateViewToggleBtn(){
+  const btn = document.getElementById('viewToggleBtn');
+  if(btn) btn.textContent = viewMode === 'grid' ? '⊞' : '☰';
+  const sel = document.getElementById('sortSelect');
+  if(sel) sel.value = sortOrder;
+}
+
+// -- LOT MODE --------------------------------------------------
+let lotMode = false;
+let lotSelected = new Set(); // card IDs
+let lotType = 'auction';
+let lotDuration = 5;
+
+function enterLotMode(){
+  lotMode = true;
+  lotSelected.clear();
+  document.getElementById('normalToolbar').classList.add('hidden');
+  document.getElementById('lotToolbar').classList.remove('hidden');
+  updateLotCount();
+  renderGrid();
+}
+
+function exitLotMode(){
+  lotMode = false;
+  lotSelected.clear();
+  document.getElementById('lotToolbar').classList.add('hidden');
+  document.getElementById('normalToolbar').classList.remove('hidden');
+  renderGrid();
+}
+
+function toggleLotCard(id, e){
+  e.stopPropagation();
+  if(lotSelected.has(id)) lotSelected.delete(id);
+  else lotSelected.add(id);
+  updateLotCount();
+  renderGrid();
+}
+
+function updateLotCount(){
+  const n = lotSelected.size;
+  document.getElementById('lotCount').textContent = n === 0 ? 'Tap cards to select' : `${n} card${n>1?'s':''} selected`;
+  const btn = document.getElementById('lotListBtn');
+  if(n >= 2){
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+  } else {
+    btn.style.opacity = '.4';
+    btn.style.pointerEvents = 'none';
+  }
+}
+
+function openLotModal(){
+  if(lotSelected.size < 2){ showToast('Select at least 2 cards'); return; }
+  const selected = cards.filter(c => lotSelected.has(c.id));
+  lotType = localStorage.getItem('cv_default_type') || 'auction';
+  lotDuration = parseInt(localStorage.getItem('cv_default_duration') || '5');
+
+  // Auto-generate title and description
+  const sports = [...new Set(selected.map(c=>c.sport).filter(Boolean))];
+  const brands = [...new Set(selected.map(c=>c.brand).filter(Boolean))];
+  const years = [...new Set(selected.map(c=>c.year).filter(Boolean))].sort();
+  const players = selected.map(c=>c.player).filter(Boolean);
+  const totalMin = selected.reduce((a,c)=>a+(c.priceMin||0),0);
+  const totalMid = selected.reduce((a,c)=>a+(c.priceMid||c.priceMin||0),0);
+
+  const autoTitle = [
+    years.length===1?years[0]:(years.length>1?years[0]+'-'+years[years.length-1]:''),
+    brands.slice(0,2).join('/'),
+    sports.length===1?sports[0]:'Multi-Sport',
+    'Lot',
+    `(${selected.length} Cards)`
+  ].filter(Boolean).join(' ').substring(0,80);
+
+  const autoDesc = `Lot of ${selected.length} sports card${selected.length>1?'s':''}.\n\nCards included:\n${selected.map((c,i)=>`${i+1}. ${[c.year,c.brand,c.player,c.parallel,c.numbered,c.rookie?'RC':null,c.auto?'Auto':null,c.grade].filter(Boolean).join(' ')}`).join('\n')}\n\nAll cards shipped together with tracking. Combined estimated value $${totalMid}+.`;
+
+  document.getElementById('lotTitle').value = autoTitle;
+  document.getElementById('lotDesc').value = autoDesc;
+  document.getElementById('lotStartPrice').value = Math.max(0.99, Math.round(totalMin * 0.5 * 100)/100) || '';
+  document.getElementById('lotBinPrice').value = totalMid || '';
+  document.getElementById('lotTotalValue').textContent = '$' + (totalMid||totalMin||0);
+  document.getElementById('lotCardCount').textContent = selected.length;
+  document.getElementById('lotModalSub').textContent = `${selected.length} cards  ${sports.join(', ')||'Sports'}`;
+  document.getElementById('lotSubmitLabel').textContent = isEbayConnected() ? 'Post Lot to eBay' : 'Copy Lot Listing';
+
+  // Render card strip
+  document.getElementById('lotCardStrip').innerHTML = selected.map(c=>`
+    <div class="lot-card-thumb" onclick="removeLotCard('${c.id}')">
+      ${c.imgData?`<img src="${c.imgData}" alt="">`:(({Baseball:'',Basketball:'',Football:'',Hockey:''})[c.sport]||'')}
+      <div class="lot-card-remove"></div>
+    </div>`).join('');
+
+  // Set lot type buttons
+  document.getElementById('lotTypeAuction').classList.toggle('selected', lotType==='auction');
+  document.getElementById('lotTypeBIN').classList.toggle('selected', lotType==='bin');
+  toggleLotPriceFields();
+
+  // Set duration
+  document.querySelectorAll('#lotDurationGrid .duration-btn').forEach(b=>{
+    b.classList.toggle('selected', parseInt(b.textContent)===lotDuration);
+  });
+
+  document.getElementById('lotModal').classList.remove('hidden');
+
+  // Build and show collage preview
+  const imgDataUrls = selected.map(c=>c.imgData).filter(Boolean);
+  if(imgDataUrls.length >= 2){
+    setTimeout(async ()=>{
+      const strip = document.getElementById('lotCardStrip');
+      const previewNote = document.createElement('div');
+      previewNote.style.cssText = 'font-size:10px;color:var(--text3);margin-bottom:6px;width:100%';
+      previewNote.textContent = 'Building collage preview...';
+      strip.parentNode.insertBefore(previewNote, strip.nextSibling);
+
+      const collage = await buildLotCollage(imgDataUrls);
+      if(collage){
+        previewNote.textContent = '📸 Collage preview (used as lead photo on eBay)';
+        previewNote.style.color = 'var(--text2)';
+        const existingPreview = document.getElementById('lotCollagePreview');
+        if(existingPreview) existingPreview.remove();
+        const previewImg = document.createElement('img');
+        previewImg.id = 'lotCollagePreview';
+        previewImg.src = collage;
+        previewImg.style.cssText = 'width:100%;border-radius:10px;border:1px solid var(--border2);margin-bottom:14px;display:block';
+        strip.parentNode.insertBefore(previewImg, previewNote.nextSibling);
+      } else {
+        previewNote.remove();
+      }
+    }, 100);
+  }
+}{ document.getElementById('lotModal').classList.add('hidden'); }
+document.getElementById('lotModal').addEventListener('click', function(e){ if(e.target===this) closeLotModal(); });
+
+function removeLotCard(id){
+  lotSelected.delete(id);
+  if(lotSelected.size < 2){ closeLotModal(); updateLotCount(); renderGrid(); showToast('Need at least 2 cards for a lot'); return; }
+  openLotModal(); // re-render with updated selection
+}
+
+function setLotType(type){
+  lotType = type;
+  document.getElementById('lotTypeAuction').classList.toggle('selected', type==='auction');
+  document.getElementById('lotTypeBIN').classList.toggle('selected', type==='bin');
+  toggleLotPriceFields();
+}
+
+function toggleLotPriceFields(){
+  const row = document.getElementById('lotPriceRow');
+  if(lotType === 'bin'){
+    row.innerHTML = `<div><label class="form-label">Buy It Now price</label><input class="form-input" id="lotBinPrice" type="number" min="0.99" step="0.01" placeholder="29.99"></div><div></div>`;
+  } else {
+    row.innerHTML = `<div><label class="form-label">Starting bid</label><input class="form-input" id="lotStartPrice" type="number" min="0.99" step="0.01" placeholder="9.99"></div><div><label class="form-label">BIN price (optional)</label><input class="form-input" id="lotBinPrice" type="number" min="0.99" step="0.01" placeholder="29.99"></div>`;
+  }
+}
+
+function setLotDuration(days, el){
+  lotDuration = days;
+  document.querySelectorAll('#lotDurationGrid .duration-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function submitLotListing(){
+  const title = document.getElementById('lotTitle').value.trim();
+  if(!title){ showToast('Please add a lot title'); return; }
+  const desc = document.getElementById('lotDesc').value.trim();
+  const binPrice = parseFloat(document.getElementById('lotBinPrice')?.value) || 0;
+  const startPrice = parseFloat(document.getElementById('lotStartPrice')?.value) || (lotType==='auction' ? 0.99 : binPrice);
+  const selected = cards.filter(c => lotSelected.has(c.id));
+
+  if(!isEbayConnected()){
+    const text = `TITLE: ${title}\n\nDESCRIPTION:\n${desc}\n\nPrice: $${binPrice||startPrice}`;
+    navigator.clipboard.writeText(text).then(()=>showToast(' Lot listing copied!')).catch(()=>showToast('Copy failed'));
+    closeLotModal(); exitLotMode();
+    return;
+  }
+
+  await refreshEbayTokenIfNeeded();
+
+  const btn = document.querySelector('#lotModal .list-btn');
+  btn.disabled = true;
+
+  // Build collage + upload individual images
+  const imgDataUrls = selected.map(c=>c.imgData).filter(Boolean);
+  let pictureXml = '';
+  if(imgDataUrls.length){
+    btn.innerHTML = `<span class="list-btn-icon"></span> Building collage...`;
+
+    // 1. Build the collage grid image
+    const collageDataUrl = await buildLotCollage(imgDataUrls);
+
+    // 2. Upload collage as the FIRST (hero) image
+    btn.innerHTML = `<span class="list-btn-icon"></span> Uploading collage...`;
+    const collageUrl = collageDataUrl ? await uploadImageToEbay(collageDataUrl) : null;
+
+    // 3. Upload individual card photos after the collage
+    const individualUrls = [];
+    for(let i = 0; i < imgDataUrls.length; i++){
+      btn.innerHTML = `<span class="list-btn-icon"></span> Uploading card ${i+1}/${imgDataUrls.length}...`;
+      const url = await uploadImageToEbay(imgDataUrls[i]);
+      if(url) individualUrls.push(url);
+    }
+
+    // Collage first, then individuals
+    const allUrls = [collageUrl, ...individualUrls].filter(Boolean);
+    pictureXml = allUrls.length
+      ? `<PictureDetails>${allUrls.map(u=>`<PictureURL>${escXml(u)}</PictureURL>`).join('')}</PictureDetails>`
+      : '';
+
+    if(!collageUrl) showToast(' Collage upload failed  using individual photos');
+    else if(!individualUrls.length) showToast(' Individual photo uploads failed');
+  }
+
+  btn.innerHTML = '<span class="list-btn-icon"></span> Creating lot listing...';
+
+  const token = getEbayToken();
+  const sport = selected[0]?.sport || 'Baseball';
+  const catId = EBAY_CATEGORIES[sport] || '261328';
+  const isAuction = lotType === 'auction';
+  const zip = getSellerZip();
+  const shipCost = getShippingLot();
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<AddItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials><eBayAuthToken>${token}</eBayAuthToken></RequesterCredentials>
+  <Item>
+    <Title>${escXml(title)}</Title>
+    <Description><![CDATA[${desc}]]></Description>
+    <PrimaryCategory><CategoryID>${catId}</CategoryID></PrimaryCategory>
+    <StartPrice>${isAuction ? (startPrice||0.99) : binPrice}</StartPrice>
+    ${isAuction && binPrice ? `<BuyItNowPrice>${binPrice}</BuyItNowPrice>` : ''}
+    ${!isAuction ? `<BuyItNowPrice>${binPrice}</BuyItNowPrice>` : ''}
+    <CategoryMappingAllowed>true</CategoryMappingAllowed>
+    <ConditionID>400010</ConditionID>
+    <Country>US</Country><Currency>USD</Currency>
+    <DispatchTimeMax>3</DispatchTimeMax>
+    <ListingDuration>${isAuction?'Days_'+lotDuration:'GTC'}</ListingDuration>
+    <ListingType>${isAuction?'Chinese':'FixedPriceItem'}</ListingType>
+    <PaymentMethods>PayPal</PaymentMethods>
+    ${pictureXml}
+    <PostalCode>${escXml(zip)}</PostalCode>
+    <Quantity>1</Quantity>
+    <LotSize>${selected.length}</LotSize>
+    <ReturnPolicy>
+      <ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>
+      <RefundOption>MoneyBack</RefundOption>
+      <ReturnsWithinOption>Days_30</ReturnsWithinOption>
+      <ShippingCostPaidByOption>Buyer</ShippingCostPaidByOption>
+    </ReturnPolicy>
+    <ShippingDetails>
+      <ShippingType>Flat</ShippingType>
+      <ShippingServiceOptions>
+        <ShippingServicePriority>1</ShippingServicePriority>
+        <ShippingService>USPSFirstClass</ShippingService>
+        <ShippingServiceCost>${shipCost}</ShippingServiceCost>
+      </ShippingServiceOptions>
+    </ShippingDetails>
+    <Site>US</Site>
+  </Item>
+</AddItemRequest>`;
+
+  try{
+    const text = await ebayApiCall('AddItem', xml);
+    const itemIdMatch = text.match(/<ItemID>(\d+)<\/ItemID>/);
+    const ackMatch = text.match(/<Ack>(\w+)<\/Ack>/);
+    const errMatch = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/);
+
+    if(ackMatch&&(ackMatch[1]==='Success'||ackMatch[1]==='Warning')&&itemIdMatch){
+      const itemId = itemIdMatch[1];
+      const url = `https://www.ebay.com/itm/${itemId}`;
+      lotSelected.forEach(id=>{
+        const idx = cards.findIndex(x=>x.id===id);
+        if(idx>=0){ cards[idx].ebayListingId=itemId; cards[idx].ebayListingUrl=url; cards[idx].inLot=true; cards[idx].listedAt=new Date().toISOString(); }
+      });
+      save();
+      document.getElementById('lotModal').querySelector('.modal-sheet').innerHTML = `
+        <div class="listing-success">
+          <div class="listing-success-icon"></div>
+          <h3>Lot Listed!</h3>
+          <p>${selected.length} cards are now live as a lot on eBay.</p>
+          <button class="view-listing-btn" onclick="openLink('${url}')">View Lot on eBay </button><br>
+          <button class="cancel-btn" style="margin-top:8px" onclick="closeLotModal();exitLotMode()">Done</button>
+        </div>`;
+    } else {
+      throw new Error(errMatch?errMatch[1]:'eBay returned an error');
+    }
+  } catch(err){
+    btn.disabled = false;
+    btn.innerHTML = '<span></span> Post Lot to eBay';
+    showToast(' ' + (err.message||'Listing failed'));
+    console.error(err);
+  }
+}
+
+// -- EBAY KEYS & STATE -----------------------------------------
+function getEbayToken(){ return localStorage.getItem('cv_ebay_token') || ''; }
+function getEbayAppId(){ return localStorage.getItem('cv_ebay_appid') || ''; }
+function getEbayCertId(){ return localStorage.getItem('cv_ebay_certid') || ''; }
+function getEbayRuName(){ return localStorage.getItem('cv_ebay_runame') || ''; }
+function getSellerZip(){ return localStorage.getItem('cv_zip') || '10001'; }
+function getShippingSingle(){ return parseFloat(localStorage.getItem('cv_ship_single') || '4.99'); }
+function getShippingLot(){ return parseFloat(localStorage.getItem('cv_ship_lot') || '5.99'); }
+function isEbayConnected(){ return !!getEbayToken() && !!getEbayAppId(); }
+let ebayListingState = { type: localStorage.getItem('cv_default_type')||'auction', duration: parseInt(localStorage.getItem('cv_default_duration')||'5'), condition: '', price: '', startPrice: '', cardId: null };
+
+function saveEbayKeys(){
+  const appId = document.getElementById('ebayAppId').value.trim();
+  const certId = document.getElementById('ebayCertId').value.trim();
+  const ruName = document.getElementById('ebayRuName').value.trim();
+  if(!appId){ showToast('Please enter your App ID'); return; }
+  localStorage.setItem('cv_ebay_appid', appId);
+  if(certId) localStorage.setItem('cv_ebay_certid', certId);
+  if(ruName) localStorage.setItem('cv_ebay_runame', ruName);
+  showToast('✓ eBay keys saved — now tap Connect');
+  renderEbayStatus();
+  saveSettings();
+}
+
+function saveManualToken(){
+  const token = document.getElementById('ebayUserToken').value.trim();
+  if(!token || token.startsWith('*')){ showToast('Please paste a valid token'); return; }
+  localStorage.setItem('cv_ebay_token', token);
+  showToast('✓ Token saved');
+  renderEbayStatus();
+  saveSettings();
+}
+
+function saveShipping(){
+  const zip = document.getElementById('sellerZip').value.trim();
+  const single = document.getElementById('shippingSingle').value;
+  const lot = document.getElementById('shippingLot').value;
+  if(zip) localStorage.setItem('cv_zip', zip);
+  if(single) localStorage.setItem('cv_ship_single', single);
+  if(lot) localStorage.setItem('cv_ship_lot', lot);
+  showToast('✓ Shipping settings saved');
+  saveSettings();
+}
+
+function renderEbayStatus(){
+  const area = document.getElementById('ebayStatusArea');
+  if(!area) return;
+  area.innerHTML = isEbayConnected()
+    ? `<div class="ebay-connected"><div class="ebay-connected-dot"></div><div class="ebay-connected-text"> eBay account connected</div><button class="ebay-disconnect-btn" onclick="disconnectEbay()">Disconnect</button></div>`
+    : '';
+
+  // Populate saved values
+  const fields = {ebayAppId:'cv_ebay_appid', ebayCertId:'cv_ebay_certid', ebayRuName:'cv_ebay_runame', sellerZip:'cv_zip', shippingSingle:'cv_ship_single', shippingLot:'cv_ship_lot'};
+  Object.entries(fields).forEach(([id, key])=>{ const el=document.getElementById(id); if(el) el.value=localStorage.getItem(key)||''; });
+  const tokenEl = document.getElementById('ebayUserToken');
+  if(tokenEl) tokenEl.value = getEbayToken() ? '************' : '';
+
+  // Show redirect URL
+  const rdEl = document.getElementById('oauthRedirectDisplay');
+  if(rdEl) rdEl.textContent = window.location.origin + window.location.pathname;
+}
+
+function disconnectEbay(){
+  if(!confirm('Disconnect eBay account?')) return;
+  localStorage.removeItem('cv_ebay_token');
+  localStorage.removeItem('cv_ebay_refresh_token');
+  renderEbayStatus();
+  showToast('eBay disconnected');
+}
+
+// -- EBAY OAUTH ------------------------------------------------
+function connectEbay(){
+  const appId = getEbayAppId() || document.getElementById('ebayAppId')?.value.trim();
+  const ruName = getEbayRuName() || document.getElementById('ebayRuName')?.value.trim();
+  if(!appId){ showToast('Save your App ID first'); return; }
+  if(!ruName){ showToast('Save your RuName first'); return; }
+
+  const scopes = [
+    'https://api.ebay.com/oauth/api_scope',
+    'https://api.ebay.com/oauth/api_scope/sell.inventory',
+    'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly',
+    'https://api.ebay.com/oauth/api_scope/sell.account',
+    'https://api.ebay.com/oauth/api_scope/sell.fulfillment',
+  ].join('%20');
+
+  const authUrl = `https://auth.ebay.com/oauth2/authorize?client_id=${encodeURIComponent(appId)}&response_type=code&redirect_uri=${encodeURIComponent(ruName)}&scope=${scopes}&prompt=login`;
+
+  // Open OAuth popup
+  const popup = window.open(authUrl, 'ebay_oauth', 'width=520,height=680,scrollbars=yes');
+  showToast('Sign in to eBay in the popup...');
+
+  // Listen for postMessage from redirect.html
+  function onMessage(e){
+    const url = e.data;
+    if(typeof url !== 'string' || !url.includes('code=')) return;
+    window.removeEventListener('message', onMessage);
+    clearInterval(poll);
+    const code = new URL(url).searchParams.get('code');
+    if(code) exchangeEbayCode(code);
+    else showToast('❌ No auth code received');
+  }
+  window.addEventListener('message', onMessage);
+
+  // Fallback: also poll the popup URL in case postMessage doesn't fire
+  const poll = setInterval(()=>{
+    try{
+      if(!popup || popup.closed){ clearInterval(poll); window.removeEventListener('message', onMessage); return; }
+      const popupUrl = popup.location.href;
+      if(popupUrl && popupUrl.includes('code=')){
+        clearInterval(poll);
+        window.removeEventListener('message', onMessage);
+        popup.close();
+        const code = new URL(popupUrl).searchParams.get('code');
+        if(code) exchangeEbayCode(code);
+      }
+    } catch(e){ /* cross-origin, keep polling */ }
+  }, 500);
+
+  // Timeout after 5 minutes
+  setTimeout(()=>{ clearInterval(poll); window.removeEventListener('message', onMessage); if(popup&&!popup.closed) popup.close(); }, 300000);
+}
+
+async function exchangeEbayCode(code){
+  showToast('Authorizing with eBay...');
+  const appId = getEbayAppId();
+  const certId = getEbayCertId();
+  const ruName = getEbayRuName();
+  if(!certId){ showToast('Save your Cert ID first, then reconnect'); return; }
+  try{
+    const data = await ebayTokenCall(
+      `grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(ruName)}`,
+      appId, certId
+    );
+    if(data.access_token){
+      localStorage.setItem('cv_ebay_token', data.access_token);
+      if(data.refresh_token) localStorage.setItem('cv_ebay_refresh_token', data.refresh_token);
+      const expiry = Date.now() + (data.expires_in || 7200) * 1000;
+      localStorage.setItem('cv_ebay_token_expiry', expiry.toString());
+      renderEbayStatus();
+      showToast('✓ eBay connected successfully!');
+      saveSettings();
+    } else {
+      throw new Error(data.error_description || data.error || 'Token exchange failed');
+    }
+  } catch(err){
+    showToast('❌ Auth failed: ' + err.message);
+    console.error('eBay auth error:', err);
+  }
+}
+
+async function refreshEbayTokenIfNeeded(){
+  const expiry = parseInt(localStorage.getItem('cv_ebay_token_expiry')||'0');
+  const refreshToken = localStorage.getItem('cv_ebay_refresh_token');
+  if(!refreshToken || Date.now() < expiry - 300000) return;
+  const appId = getEbayAppId();
+  const certId = getEbayCertId();
+  if(!appId || !certId) return;
+  try{
+    const data = await ebayTokenCall(
+      `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}&scope=https://api.ebay.com/oauth/api_scope/sell.inventory`,
+      appId, certId
+    );
+    if(data.access_token){
+      localStorage.setItem('cv_ebay_token', data.access_token);
+      const expiry = Date.now() + (data.expires_in || 7200) * 1000;
+      localStorage.setItem('cv_ebay_token_expiry', expiry.toString());
+    }
+  } catch(e){ console.warn('Token refresh failed', e); }
+}
+
+// -- IMAGE HOSTING via eBay EPS ---------------------------------
+// eBay's own image hosting service  no third party needed.
+// Uploads base64 image and returns a hosted eBay URL.
+async function uploadImageToEbay(base64DataUrl){
+  if(!base64DataUrl) return null;
+  const token = getEbayToken();
+  if(!token){ console.warn('uploadImageToEbay: no token'); return null; }
+
+  // Already a hosted URL — return as-is
+  if(base64DataUrl.startsWith('http')) return base64DataUrl;
+
+  const base64 = base64DataUrl.split(',')[1];
+  const mime = base64DataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+  if(!base64){ console.warn('uploadImageToEbay: could not extract base64'); return null; }
+
+  // Build the auth token XML to include in the multipart
+  const tokenXml = `<?xml version="1.0" encoding="utf-8"?><UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents"><RequesterCredentials><eBayAuthToken>${token}</eBayAuthToken></RequesterCredentials><PictureSet>Supersize</PictureSet></UploadSiteHostedPicturesRequest>`;
+
+  try{
+    const text = await ebayImageUpload(base64, mime, token, getEbayAppId());
+    console.log('eBay image upload response:', text.substring(0, 300));
+    const urlMatch = text.match(/<FullURL>(.*?)<\/FullURL>/);
+    const errMatch = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/);
+    if(urlMatch) return urlMatch[1];
+    if(errMatch) console.warn('eBay image upload error:', errMatch[1]);
+  } catch(e){ console.warn('Image upload failed:', e); }
+  return null;
+}
+
+// Upload multiple images, return array of URLs
+async function uploadImages(imgDataUrls, onProgress){
+  const urls = [];
+  for(let i=0; i<imgDataUrls.length; i++){
+    if(onProgress) onProgress(i+1, imgDataUrls.length);
+    const url = await uploadImageToEbay(imgDataUrls[i]);
+    if(url) urls.push(url);
+  }
+  return urls;
+}
+
+// -- LOT COLLAGE BUILDER ---------------------------------------
+// Stitches card images into a clean grid collage using Canvas.
+// Returns a base64 PNG data URL ready to upload.
+async function buildLotCollage(imgDataUrls){
+  const count = imgDataUrls.length;
+  if(!count) return null;
+
+  // Figure out grid dimensions
+  const cols = count <= 2 ? count : count <= 4 ? 2 : count <= 6 ? 3 : count <= 9 ? 3 : 4;
+  const rows = Math.ceil(count / cols);
+
+  const CARD_W = 300;   // each card cell width px
+  const CARD_H = 420;   // each card cell height px (standard card ratio ~2.53.5)
+  const GAP = 12;
+  const PADDING = 20;
+  const BG = '#0f0f11';
+  const LABEL_H = 36;
+
+  const canvasW = PADDING * 2 + cols * CARD_W + (cols - 1) * GAP;
+  const canvasH = PADDING * 2 + rows * (CARD_H + LABEL_H) + (rows - 1) * GAP;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // Load all images in parallel
+  const loadImage = src => new Promise((res) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
+    img.src = src;
+  });
+
+  const images = await Promise.all(imgDataUrls.map(loadImage));
+
+  for(let i = 0; i < count; i++){
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = PADDING + col * (CARD_W + GAP);
+    const y = PADDING + row * (CARD_H + LABEL_H + GAP);
+
+    // Card background
+    ctx.fillStyle = '#222228';
+    roundRect(ctx, x, y, CARD_W, CARD_H, 10);
+    ctx.fill();
+
+    const img = images[i];
+    if(img){
+      // Clip to rounded rect and draw image cover
+      ctx.save();
+      roundRect(ctx, x, y, CARD_W, CARD_H, 10);
+      ctx.clip();
+
+      const scale = Math.max(CARD_W / img.width, CARD_H / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      const dx = x + (CARD_W - dw) / 2;
+      const dy = y + (CARD_H - dh) / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.restore();
+    } else {
+      // Placeholder
+      ctx.fillStyle = '#44444f';
+      ctx.font = `${CARD_W * 0.25}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('', x + CARD_W/2, y + CARD_H/2);
+    }
+
+    // Card number badge
+    ctx.fillStyle = '#f5c542';
+    ctx.beginPath();
+    ctx.arc(x + CARD_W - 14, y + 14, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(i + 1, x + CARD_W - 14, y + 14);
+  }
+
+  // Watermark / branding strip at bottom
+  ctx.fillStyle = '#f5c54220';
+  ctx.fillRect(0, canvasH - 28, canvasW, 28);
+  ctx.fillStyle = '#f5c542';
+  ctx.font = '500 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`CardVault Lot  ${count} Cards`, canvasW / 2, canvasH - 14);
+
+  return canvas.toDataURL('image/jpeg', 0.92);
+}
+
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function setDefaultDuration(days, el){
+  localStorage.setItem('cv_default_duration', days);
+  ebayListingState.duration = days;
+  document.querySelectorAll('#defaultDurationGrid .duration-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  saveSettings();
+}
+
+function setDefaultType(type){
+  localStorage.setItem('cv_default_type', type);
+  ebayListingState.type = type;
+  document.getElementById('defaultAuction').classList.toggle('selected', type==='auction');
+  document.getElementById('defaultBIN').classList.toggle('selected', type==='bin');
+  saveSettings();
+}
+
+// -- EBAY MODAL ------------------------------------------------
+function openEbayModal(cardId){
+  const c = cards.find(x=>x.id===cardId);
+  if(!c) return;
+
+  ebayListingState.cardId = cardId;
+  ebayListingState.type = localStorage.getItem('cv_default_type')||'auction';
+  ebayListingState.duration = parseInt(localStorage.getItem('cv_default_duration')||'5');
+  ebayListingState.price = c.priceMid || c.priceMin || 10;
+  ebayListingState.startPrice = Math.max(1, Math.round((c.priceMin||5) * 0.7));
+
+  // Auto-detect condition from card
+  const cond = c.condition || c.grade || '';
+  if(cond.includes('PSA')||cond.includes('BGS')||cond.includes('SGC')) ebayListingState.condition = 'graded';
+  else if(cond.toLowerCase().includes('near mint')||cond.toLowerCase().includes('gem')) ebayListingState.condition = 'near_mint';
+  else if(cond.toLowerCase().includes('excellent')) ebayListingState.condition = 'excellent';
+  else if(cond.toLowerCase().includes('very good')) ebayListingState.condition = 'very_good';
+  else if(cond.toLowerCase().includes('poor')) ebayListingState.condition = 'poor';
+  else ebayListingState.condition = 'near_mint';
+
+  document.getElementById('ebayModal').classList.remove('hidden');
+  renderEbayModalContent(c);
+}
+
+function closeEbayModal(){
+  document.getElementById('ebayModal').classList.add('hidden');
+}
+
+// Close modal on backdrop tap
+document.getElementById('ebayModal').addEventListener('click', function(e){
+  if(e.target === this) closeEbayModal();
+});
+
+function renderEbayModalContent(c){
+  const s = ebayListingState;
+  const connected = isEbayConnected();
+  const connWarning = !connected ? `<div style="background:rgba(255,124,58,.1);border:1px solid rgba(255,124,58,.3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--orange)">⚠ eBay not connected — go to Settings. You can still preview.</div>` : '';
+
+  const conditionOptions = [
+    {key:'near_mint', label:'Near Mint or Better', sub:'Fresh from pack'},
+    {key:'excellent', label:'Excellent', sub:'Light wear'},
+    {key:'very_good', label:'Very Good', sub:'Moderate wear'},
+    {key:'poor', label:'Poor', sub:'Heavy wear'},
+    {key:'graded', label:'Graded', sub:'PSA/BGS/SGC slab'},
+  ].map(o=>`<div class="condition-btn${s.condition===o.key?' selected':''}" onclick="setModalCondition('${o.key}',this)" style="font-size:11px;padding:8px 6px">${o.label}<br><span style="font-size:9px;opacity:.6">${o.sub}</span></div>`).join('');
+
+  const durations = s.type === 'auction'
+    ? [3,5,7,10].map(d=>`<div class="duration-btn${s.duration===d?' selected':''}" onclick="setModalDuration(${d},this)">${d}d</div>`).join('')
+    : `<div class="duration-btn selected" style="grid-column:1/-1;cursor:default;font-size:11px">Good 'Til Cancelled</div>`;
+
+  const priceSection = s.type === 'auction'
+    ? `<div class="form-row"><div><label class="form-label">Starting bid</label><input class="form-input" type="number" id="modalStartPrice" value="${s.startPrice}" min="0.99" step="0.01"></div><div><label class="form-label">BIN (optional)</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01"></div></div>`
+    : `<label class="form-label">Buy It Now price</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01">`;
+
+  // Required fields review — highlight missing ones
+  const reqField = (label, value, fieldId, placeholder) => {
+    const missing = !value;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:${missing?'rgba(224,92,92,.08)':'var(--surface2)'};border:1px solid ${missing?'rgba(224,92,92,.3)':'var(--border)'};margin-bottom:5px">
+      <span style="font-size:11px;color:var(--text2);width:90px;flex-shrink:0">${label}${missing?` <span style="color:var(--red)">*</span>`:''}</span>
+      <input style="flex:1;background:transparent;border:none;color:${missing?'var(--red)':'var(--text)'};font-size:12px;font-family:'DM Mono',monospace;outline:none" 
+        id="req_${fieldId}" value="${value||''}" placeholder="${missing?'⚠ Required':placeholder||''}" 
+        onchange="updateCardField('${c.id}','${fieldId}',this.value)">
+    </div>`;
+  };
+
+  const sportLeagueMap = {Baseball:'MLB',Basketball:'NBA',Football:'NFL',Hockey:'NHL',Soccer:'MLS'};
+
+  document.getElementById('ebayModalContent').innerHTML = `
+    <div class="modal-title">Review & List on eBay</div>
+    <div class="modal-sub" style="margin-bottom:12px">${c.player||'Card'} · ${c.year||''} ${c.brand||''}</div>
+    ${connWarning}
+
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Required fields <span style="color:var(--red)">*</span> = missing</div>
+
+    ${reqField('Player', c.player, 'player', 'e.g. Patrick Mahomes')}
+    ${reqField('Brand/Manuf.', c.brand, 'brand', 'e.g. Panini Prizm')}
+    ${reqField('Year/Season', c.year, 'year', 'e.g. 2024')}
+    ${reqField('Team', c.team, 'team', 'e.g. Chiefs')}
+    ${reqField('Set', c.set||c.brand, 'set', 'e.g. Prizm Draft')}
+    ${reqField('Parallel', c.parallel||'Base', 'parallel', 'e.g. Gold, Silver')}
+    ${reqField('Grade/Cond.', c.grade||c.condition, 'grade', 'e.g. PSA 9, Near Mint')}
+
+    <div style="margin-top:12px;margin-bottom:6px">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Listing details</div>
+      <div class="listing-type-row" style="margin-bottom:10px">
+        <div class="listing-type-btn${s.type==='auction'?' selected':''}" onclick="setModalType('auction')"><div class="type-icon">🔨</div><div class="type-label">Auction</div></div>
+        <div class="listing-type-btn${s.type==='bin'?' selected':''}" onclick="setModalType('bin')"><div class="type-icon">💰</div><div class="type-label">Buy It Now</div></div>
+      </div>
+      ${priceSection}
+      <label class="form-label" style="margin-top:10px">Duration</label>
+      <div class="duration-grid">${durations}</div>
+      <label class="form-label" style="margin-top:10px">Condition</label>
+      <div class="condition-grid">${conditionOptions}</div>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;margin-top:12px;margin-bottom:14px">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px">eBay title preview</div>
+      <div style="font-size:12px;color:var(--gold);font-weight:500;line-height:1.4" id="ebayTitlePreview">${c.ebayTitle||'—'}</div>
+    </div>
+
+    <button class="list-btn" onclick="submitEbayListing()">
+      <span class="list-btn-icon">🛒</span> ${connected ? 'Post to eBay' : 'Copy listing (eBay not connected)'}
+    </button>
+    <button class="cancel-btn" onclick="closeEbayModal()">Cancel</button>`;
+}
+
+function setModalType(type){
+  ebayListingState.type = type;
+  const c = cards.find(x=>x.id===ebayListingState.cardId);
+  if(c) renderEbayModalContent(c);
+}
+
+function setModalDuration(days, el){
+  ebayListingState.duration = days;
+  document.querySelectorAll('.modal-sheet .duration-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function setModalCondition(key, el){
+  ebayListingState.condition = key;
+  document.querySelectorAll('#ebayModal .condition-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function updateCardField(id, field, value){
+  const idx = cards.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  cards[idx][field] = value || null;
+  const c = cards[idx];
+  cards[idx].ebayTitle = generateEbayTitle({
+    player:c.player, year:c.year, brand:c.brand, parallel:c.parallel,
+    numbered:c.numbered, rookie:c.rookie, auto:c.auto, grade:c.grade, team:c.team
+  });
+  save();
+  const titleEl = document.getElementById('ebayTitlePreview');
+  if(titleEl) titleEl.textContent = cards[idx].ebayTitle || '—';
+}
+
+
+// -- EBAY DIRECT API (no proxy server needed) -------------------
+const EBAY_API_URL = 'https://api.ebay.com/ws/api.dll';
+const EBAY_TOKEN_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
+const CORS_PROXY = 'https://corsproxy.io/?url=';
+
+async function ebayApiCall(callName, xmlBody){
+  const url = CORS_PROXY + encodeURIComponent(EBAY_API_URL);
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/xml',
+      'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+      'X-EBAY-API-CALL-NAME': callName,
+      'X-EBAY-API-SITEID': '0',
+      'X-EBAY-API-APP-NAME': getEbayAppId(),
+    },
+    body: xmlBody,
+  });
+  return resp.text();
+}
+
+async function ebayTokenCall(body, appId, certId){
+  const credentials = btoa(appId + ':' + certId);
+  // Try multiple CORS proxies in case one fails
+  const proxies = [
+    'https://corsproxy.io/?url=',
+    'https://api.allorigins.win/raw?url=',
+  ];
+
+  for(const proxy of proxies){
+    try{
+      const url = proxy + encodeURIComponent(EBAY_TOKEN_URL);
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + credentials,
+          'x-requested-with': 'XMLHttpRequest',
+        },
+        body,
+      });
+      const text = await resp.text();
+      console.log('eBay token response:', text.substring(0, 200));
+      try{ return JSON.parse(text); }
+      catch(e){ console.warn('Token parse failed:', text.substring(0,100)); continue; }
+    } catch(e){
+      console.warn('Proxy failed:', proxy, e.message);
+    }
+  }
+  throw new Error('All CORS proxies failed — check your internet connection');
+}
+
+async function ebayImageUpload(base64, mime, token, appId){
+  const boundary = 'CardVault' + Date.now();
+  const xmlPart = '<?xml version="1.0" encoding="utf-8"?><UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents"><RequesterCredentials><eBayAuthToken>' + token + '</eBayAuthToken></RequesterCredentials><PictureSet>Supersize</PictureSet></UploadSiteHostedPicturesRequest>';
+  // For file:// or direct use, we send as XML with base64 embedded
+  // (modern eBay API accepts this for smaller images)
+  const xml = '<?xml version="1.0" encoding="utf-8"?><UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents"><RequesterCredentials><eBayAuthToken>' + token + '</eBayAuthToken></RequesterCredentials><PictureSet>Supersize</PictureSet><PictureData>' + base64 + '</PictureData></UploadSiteHostedPicturesRequest>';
+  return ebayApiCall('UploadSiteHostedPictures', xml);
+}
+
+// eBay condition ID map
+const EBAY_CONDITIONS = {
+  near_mint:  {id:'400010', name:'Near Mint or Better'},
+  excellent:  {id:'400011', name:'Excellent'},
+  very_good:  {id:'400012', name:'Very Good'},
+  poor:       {id:'400013', name:'Poor'},
+  graded:     {id:'2750',   name:'Graded'},
+};
+
+const EBAY_CATEGORIES = {
+  Baseball: '261328', Basketball: '261329', Football: '261330',
+  Hockey: '261331', Soccer: '261333',
+};
+
+async function submitEbayListing(){
+  const c = cards.find(x=>x.id===ebayListingState.cardId);
+  if(!c) return;
+
+  if(!isEbayConnected()){
+    copyListing(c.id);
+    showToast('Copied! Connect eBay in Settings to post directly.');
+    closeEbayModal();
+    return;
+  }
+
+  await refreshEbayTokenIfNeeded();
+
+  const listBtn = document.querySelector('#ebayModal .list-btn');
+  listBtn.disabled = true;
+  listBtn.innerHTML = '<span class="list-btn-icon">⏳</span> Preparing...';
+
+  const s = ebayListingState;
+  const token = getEbayToken();
+
+  // Auto-set condition from card if not chosen in modal
+  if(!s.condition){
+    const cond = c.condition || c.grade || '';
+    if(cond.includes('PSA')||cond.includes('BGS')||cond.includes('SGC')) s.condition = 'graded';
+    else if(cond.toLowerCase().includes('near mint')||cond.toLowerCase().includes('gem')) s.condition = 'near_mint';
+    else if(cond.toLowerCase().includes('excellent')) s.condition = 'excellent';
+    else if(cond.toLowerCase().includes('very good')) s.condition = 'very_good';
+    else if(cond.toLowerCase().includes('poor')) s.condition = 'poor';
+    else s.condition = 'near_mint'; // safe default
+  }
+
+  const condInfo = EBAY_CONDITIONS[s.condition] || EBAY_CONDITIONS.near_mint;
+  console.log('Condition state:', s.condition, '→ condInfo:', JSON.stringify(condInfo));
+  // Safety check - ensure we always have a valid condition ID
+  if(!condInfo || !condInfo.id){
+    showToast('Please select a condition before posting');
+    listBtn.disabled=false;
+    listBtn.innerHTML='<span>🛒</span> Post to eBay';
+    return;
+  }
+  const catId = EBAY_CATEGORIES[c.sport] || '261328';
+  const isAuction = s.type === 'auction';
+
+  // Read prices from the live input fields
+  const binPriceEl = document.getElementById('modalBinPrice');
+  const startPriceEl = document.getElementById('modalStartPrice');
+  const binPrice = parseFloat(binPriceEl?.value) || parseFloat(s.price) || 9.99;
+  const startPrice = parseFloat(startPriceEl?.value) || parseFloat(s.startPrice) || 0.99;
+
+  // Validate
+  if(isAuction && startPrice < 0.99){ showToast('Starting bid must be at least $0.99'); listBtn.disabled=false; listBtn.innerHTML='<span>🛒</span> Post to eBay'; return; }
+  if(!isAuction && binPrice < 0.99){ showToast('Buy It Now price must be at least $0.99'); listBtn.disabled=false; listBtn.innerHTML='<span>🛒</span> Post to eBay'; return; }
+
+  const zip = getSellerZip();
+  const shipCost = getShippingSingle();
+
+  // Upload image first — required by eBay
+  let pictureUrl = '';
+  const imgSource = c.imgData || c.cloudImgUrl || null;
+  if(imgSource){
+    listBtn.innerHTML = '<span class="list-btn-icon">📤</span> Uploading photo...';
+    const uploaded = await uploadImageToEbay(imgSource);
+    if(uploaded){
+      pictureUrl = uploaded;
+    } else {
+      // Photo upload failed — warn user but don't block
+      showToast('⚠ Photo upload failed — eBay requires at least 1 photo');
+      listBtn.disabled = false;
+      listBtn.innerHTML = '<span class="list-btn-icon">🛒</span> Post to eBay';
+      return;
+    }
+  } else {
+    showToast('⚠ This card has no photo — please add one before listing on eBay');
+    listBtn.disabled = false;
+    listBtn.innerHTML = '<span class="list-btn-icon">🛒</span> Post to eBay';
+    return;
+  }
+
+  listBtn.innerHTML = '<span class="list-btn-icon">⏳</span> Creating listing...';
+
+  // Build item specifics — skip any with empty values (eBay rejects them)
+  const sp = (name, value) => value ? `<NameValueList><Name>${name}</Name><Value>${escXml(String(value))}</Value></NameValueList>` : '';
+  const sportLeagueMap = {Baseball:'MLB',Basketball:'NBA',Football:'NFL',Hockey:'NHL',Soccer:'MLS'};
+  const features = [c.rookie?'Rookie':null, c.auto?'Autograph':null, c.relic?'Memorabilia/Relic':null, c.numbered?'Serial Numbered':null].filter(Boolean).join('|') || 'Basic';
+  const gradingService = c.grade ? (c.grade.includes('PSA')?'PSA':c.grade.includes('BGS')||c.grade.includes('Beckett')?'BGS':c.grade.includes('SGC')?'SGC':null) : null;
+  const itemSpecificsXml = `<ItemSpecifics>
+      ${sp('Player/Athlete', c.player)}
+      ${sp('Manufacturer', c.brand || 'Unknown')}
+      ${sp('Season', c.year)}
+      ${sp('Set', c.set || c.brand || 'Base Set')}
+      ${sp('Card Name', c.player)}
+      ${sp('Team', c.team)}
+      ${sp('Sport', c.sport)}
+      ${sp('League', sportLeagueMap[c.sport] || c.sport)}
+      ${sp('Type', 'Sports Trading Card')}
+      ${sp('Parallel/Variety', c.parallel || 'Base')}
+      ${sp('Features', features)}
+      ${sp('Autographed', c.auto ? 'Yes' : 'No')}
+      ${sp('Card Number', c.numbered)}
+      ${sp('Grade', c.grade)}
+      ${sp('Grading Service', gradingService)}
+      ${sp('Condition', condInfo.name)}
+    </ItemSpecifics>`;
+
+  const descBody = `${c.ebayDesc||'Sports card in good condition.'}\n\n${[c.auto?'✓ Autographed':null, c.relic?'✓ Relic/Patch':null, c.rookie?'✓ Rookie Card':null, c.numbered?'✓ Numbered '+c.numbered:null].filter(Boolean).join('\n')}\nCondition: ${condInfo.name}`;
+
+  // Build XML — BIN and Auction have different price/duration structures
+  const priceXml = isAuction
+    ? `<StartPrice>${startPrice.toFixed(2)}</StartPrice>${binPrice > startPrice ? `<BuyItNowPrice>${binPrice.toFixed(2)}</BuyItNowPrice>` : ''}`
+    : `<StartPrice>${binPrice.toFixed(2)}</StartPrice>`;
+
+  const durationXml = isAuction
+    ? `<ListingDuration>Days_${s.duration}</ListingDuration>`
+    : `<ListingDuration>GTC</ListingDuration>`;
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<AddItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials><eBayAuthToken>${token}</eBayAuthToken></RequesterCredentials>
+  <Item>
+    <Title>${escXml(c.ebayTitle||'Sports Card')}</Title>
+    <Description><![CDATA[${descBody}]]></Description>
+    <PrimaryCategory><CategoryID>${catId}</CategoryID></PrimaryCategory>
+    ${priceXml}
+    <CategoryMappingAllowed>true</CategoryMappingAllowed>
+    <ConditionID>${condInfo.id}</ConditionID>
+    <Country>US</Country><Currency>USD</Currency>
+    <DispatchTimeMax>3</DispatchTimeMax>
+    ${durationXml}
+    <ListingType>${isAuction ? 'Chinese' : 'FixedPriceItem'}</ListingType>
+    <PaymentMethods>PayPal</PaymentMethods>
+    ${pictureUrl ? `<PictureDetails><PictureURL>${escXml(pictureUrl)}</PictureURL></PictureDetails>` : ''}
+    <PostalCode>${escXml(zip)}</PostalCode>
+    <Quantity>1</Quantity>
+    ${itemSpecificsXml}
+    <ReturnPolicy>
+      <ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>
+      <RefundOption>MoneyBack</RefundOption>
+      <ReturnsWithinOption>Days_30</ReturnsWithinOption>
+      <ShippingCostPaidByOption>Buyer</ShippingCostPaidByOption>
+    </ReturnPolicy>
+    <ShippingDetails>
+      <ShippingType>Flat</ShippingType>
+      <ShippingServiceOptions>
+        <ShippingServicePriority>1</ShippingServicePriority>
+        <ShippingService>USPSFirstClass</ShippingService>
+        <ShippingServiceCost>${shipCost}</ShippingServiceCost>
+      </ShippingServiceOptions>
+    </ShippingDetails>
+    <Site>US</Site>
+  </Item>
+</AddItemRequest>`;
+
+  console.log('eBay ConditionID being sent:', condInfo.id, '| key:', s.condition, '| category:', catId);
+  try{
+    const text = await ebayApiCall('AddItem', xml);
+    console.log('eBay AddItem response:', text.substring(0, 800));
+    const itemIdMatch = text.match(/<ItemID>(\d+)<\/ItemID>/);
+    const ackMatch = text.match(/<Ack>(\w+)<\/Ack>/);
+    const errMatch = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/);
+
+    if(ackMatch&&(ackMatch[1]==='Success'||ackMatch[1]==='Warning')&&itemIdMatch){
+      const itemId = itemIdMatch[1];
+      const listingUrl = `https://www.ebay.com/itm/${itemId}`;
+      const idx = cards.findIndex(x=>x.id===c.id);
+      if(idx>=0){ cards[idx].ebayListingId=itemId; cards[idx].ebayListingUrl=listingUrl; cards[idx].listedAt=new Date().toISOString(); save(); }
+      showListingSuccess(itemId, listingUrl, c.player);
+    } else {
+      throw new Error(errMatch ? errMatch[1] : 'eBay returned an error. Check your token.');
+    }
+  } catch(err){
+    listBtn.disabled = false;
+    listBtn.innerHTML = '<span class="list-btn-icon"></span> Post to eBay';
+    showToast(' ' + (err.message||'Listing failed'));
+    console.error(err);
+  }
+}
+
+function showListingSuccess(itemId, url, player){
+  document.getElementById('ebayModalContent').innerHTML = `
+    <div class="listing-success">
+      <div class="listing-success-icon"></div>
+      <h3>Listed on eBay!</h3>
+      <p>${player||'Card'} is now live on eBay.<br>Item ID: ${itemId}</p>
+      <button class="view-listing-btn" onclick="openLink('${url}')">View listing on eBay </button>
+      <br>
+      <button class="cancel-btn" onclick="closeEbayModal()">Done</button>
+    </div>`;
+}
+
+function escXml(str){ return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// -- Init
+updateStats();
+renderGrid();
+if(hotData){ const hasOwned=(hotData.cards||[]).some(c=>c.inMyCollection); document.getElementById('hotDot').classList.toggle('show',hasOwned); }
+
+// Boot auth — shows login screen or loads user's cards
+initAuth();
+
+// Refresh status panels when settings opened — hooked into showView
+function onSettingsOpen(){
+  setTimeout(()=>{ renderEbayStatus(); renderSupabaseStatus(); }, 50);
+}
+
+
+
+</script>
+</body>
+</html>
