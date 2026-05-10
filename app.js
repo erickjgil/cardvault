@@ -1928,6 +1928,20 @@ async function submitEbayListing(){
     ${pictureUrl ? `<PictureDetails><PictureURL>${escXml(pictureUrl)}</PictureURL></PictureDetails>` : ''}
     <PostalCode>${escXml(zip)}</PostalCode>
     <Quantity>1</Quantity>
+    <ItemSpecifics>
+      <NameValueList><Name>Manufacturer</Name><Value>${escXml(c.brand||'Unknown')}</Value></NameValueList>
+      <NameValueList><Name>Player</Name><Value>${escXml(c.player||'Unknown')}</Value></NameValueList>
+      <NameValueList><Name>Sport</Name><Value>${escXml(c.sport||'')}</Value></NameValueList>
+      <NameValueList><Name>Season</Name><Value>${escXml(c.year||'')}</Value></NameValueList>
+      <NameValueList><Name>Team</Name><Value>${escXml(c.team||'')}</Value></NameValueList>
+      <NameValueList><Name>Card Name</Name><Value>${escXml(c.player||'')}</Value></NameValueList>
+      <NameValueList><Name>Set</Name><Value>${escXml(c.set||c.brand||'')}</Value></NameValueList>
+      ${c.parallel ? `<NameValueList><Name>Parallel/Variety</Name><Value>${escXml(c.parallel)}</Value></NameValueList>` : ''}
+      ${c.numbered ? `<NameValueList><Name>Print Run</Name><Value>${escXml(c.numbered)}</Value></NameValueList>` : ''}
+      ${c.grade ? `<NameValueList><Name>Grade</Name><Value>${escXml(c.grade)}</Value></NameValueList>` : ''}
+      <NameValueList><Name>Autographed</Name><Value>${c.auto ? 'Yes' : 'No'}</Value></NameValueList>
+      <NameValueList><Name>Rookie Card</Name><Value>${c.rookie ? 'Yes' : 'No'}</Value></NameValueList>
+    </ItemSpecifics>
     <ReturnPolicy>
       <ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>
       <RefundOption>MoneyBack</RefundOption>
