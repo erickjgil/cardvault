@@ -225,20 +225,38 @@ let prevView = 'catalog';
 // -- SUPABASE SYNC ----------------------------------------------
 // -- RUNTIME CONFIG (keys served from Netlify env vars, never in source) ----
 let _runtimeConfig = null;
+const CONFIG_CACHE_KEY = 'cv_config_cache';
+const CONFIG_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 async function loadConfig(){
   if(_runtimeConfig) return _runtimeConfig;
+
+  // Check localStorage cache first
+  try{
+    const cached = localStorage.getItem(CONFIG_CACHE_KEY);
+    if(cached){
+      const { data, ts } = JSON.parse(cached);
+      if(Date.now() - ts < CONFIG_CACHE_TTL && data.supabaseUrl && data.supabaseKey){
+        _runtimeConfig = data;
+        return _runtimeConfig;
+      }
+    }
+  } catch(e){}
+
+  // Fetch from Netlify function (only when cache is missing or stale)
   try{
     const resp = await fetch('/.netlify/functions/config');
     if(resp.ok){
       _runtimeConfig = await resp.json();
-      // Cache in session storage so we don't fetch every page load
-      sessionStorage.setItem('cv_config', JSON.stringify(_runtimeConfig));
+      if(_runtimeConfig.supabaseUrl && _runtimeConfig.supabaseKey){
+        // Cache for 24 hours
+        localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify({
+          data: _runtimeConfig, ts: Date.now()
+        }));
+      }
     }
   } catch(e){
-    // Fallback to session cache if function unreachable
-    const cached = sessionStorage.getItem('cv_config');
-    if(cached) _runtimeConfig = JSON.parse(cached);
+    console.warn('Config fetch failed, using cached if available');
   }
   return _runtimeConfig;
 }
@@ -353,39 +371,7 @@ async function compressImage(dataUrl, maxKB=150){
   });
 }
 
-// Upload image to Supabase Storage, return public URL
-async function uploadImageToSupabase(cardId, dataUrl){
-  if(!dataUrl || !isSupabaseConnected()) return null;
-  const compressed = await compressImage(dataUrl);
-  if(!compressed) return null;
-
-  const base64 = compressed.split(',')[1];
-  const mime = compressed.split(';')[0].split(':')[1] || 'image/jpeg';
-  const ext = mime.includes('png') ? 'png' : 'jpg';
-  const path = `cards/${cardId}.${ext}`;
-
-  // Convert base64 to blob
-  const bytes = atob(base64);
-  const arr = new Uint8Array(bytes.length);
-  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
-  const blob = new Blob([arr], {type: mime});
-
-  const sbUrl = getSupabaseUrl();
-  const sbKey = getSupabaseKey();
-
-  try{
-    // Upload to Supabase Storage
-    const resp = await fetch(`${sbUrl}/storage/v1/object/card-images/${path}`, {
-      method: 'POST',
-      headers: { 'apikey': sbKey, 'Authorization': 'Bearer '+sbKey, 'Content-Type': mime, 'x-upsert': 'true' },
-      body: blob
-    });
-    if(resp.ok || resp.status===200 || resp.status===201 || resp.status===409){
-      return `${sbUrl}/storage/v1/object/public/card-images/${path}`;
-    }
-  } catch(e){ console.warn('Supabase image upload failed', e); }
-  return null;
-}
+// Image storage note: images stored inline in data column, no separate storage needed
 
 // Push a single card to Supabase
 async function pushCard(card){
@@ -499,24 +485,11 @@ async function deleteCardFromCloud(id){
   if(!isSupabaseConnected()) return;
   try{
     const sb = getSB();
-    if(sb){
-      await sb.from('cards').delete().eq('id', id);
-      // Try to delete image — ignore errors if it doesn't exist
-      await sb.storage.from('card-images').remove([`cards/${id}.jpg`, `cards/${id}.png`]);
-    }
+    if(sb) await sb.from('cards').delete().eq('id', id);
   } catch(e){ console.warn('Cloud delete failed', e); }
 }
 
-async function ensureStorageBucket(){
-  const sb = getSB();
-  if(!sb) return;
-  try{
-    // Try to get bucket first — if it exists, skip creation
-    const { data } = await sb.storage.getBucket('card-images');
-    if(data) return; // already exists
-    await sb.storage.createBucket('card-images', { public: true });
-  } catch(e){ /* ignore — bucket likely already exists */ }
-}
+async function ensureStorageBucket(){ /* no-op: images stored in DB now */ }
 
 // Auto-sync after every save
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2); }
