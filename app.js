@@ -487,33 +487,25 @@ async function pullFromCloud(){
 // Delete a card from cloud
 async function deleteCardFromCloud(id){
   if(!isSupabaseConnected()) return;
-  const sbUrl = getSupabaseUrl();
-  const sbKey = getSupabaseKey();
   try{
     const sb = getSB();
     if(sb){
       await sb.from('cards').delete().eq('id', id);
-    } else {
-      await fetch(`${sbUrl}/rest/v1/cards?id=eq.${id}`, { method: 'DELETE', headers: sbHeaders() });
+      // Try to delete image — ignore errors if it doesn't exist
+      await sb.storage.from('card-images').remove([`cards/${id}.jpg`, `cards/${id}.png`]);
     }
-    // Also delete image
-    await fetch(`${sbUrl}/storage/v1/object/card-images/cards/${id}.jpg`, {
-      method: 'DELETE', headers: { 'apikey': sbKey, 'Authorization': 'Bearer '+sbKey }
-    });
   } catch(e){ console.warn('Cloud delete failed', e); }
 }
 
 async function ensureStorageBucket(){
-  const sbUrl = getSupabaseUrl();
-  const sbKey = getSupabaseKey();
+  const sb = getSB();
+  if(!sb) return;
   try{
-    // Create bucket if it doesn't exist
-    await fetch(`${sbUrl}/storage/v1/bucket`, {
-      method: 'POST',
-      headers: { 'apikey': sbKey, 'Authorization': 'Bearer '+sbKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: 'card-images', name: 'card-images', public: true })
-    });
-  } catch(e){ /* bucket may already exist, that's fine */ }
+    // Try to get bucket first — if it exists, skip creation
+    const { data } = await sb.storage.getBucket('card-images');
+    if(data) return; // already exists
+    await sb.storage.createBucket('card-images', { public: true });
+  } catch(e){ /* ignore — bucket likely already exists */ }
 }
 
 // Auto-sync after every save
@@ -588,7 +580,8 @@ function renderGrid(){
     const rc = c.rookie ? '<div class="badge-rc">RC</div>' : '';
     const fire = hot && !lotMode && !c.sold ? '<div class="fire-badge">🔥 HOT</div>' : '';
     const soldBadge = c.sold ? `<div style="position:absolute;bottom:5px;right:5px;background:var(--green);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px">✓ SOLD${c.soldPrice?' $'+c.soldPrice:''}</div>` : '';
-    const img = c.imgData ? `<img src="${c.imgData}" alt="">` : '<div class="card-img-placeholder">🃏</div>';
+    const imgSrc = c.imgData || c.cloudImgUrl || null;
+    const img = imgSrc ? `<img src="${imgSrc}" alt="">` : '<div class="card-img-placeholder">🃏</div>';
     const chips = [c.numbered,c.grade,c.auto?'Auto':null,c.relic?'Relic':null].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('');
 
     if(lotMode){
@@ -688,7 +681,8 @@ function openDetail(id){
   const hotInfo=hotData&&hotData.cards?hotData.cards.find(x=>(x.player||'').toLowerCase()===(c.player||'').toLowerCase()):null;
   document.getElementById('detailTitle').textContent=c.player||'Card Detail';
   document.getElementById('detailHotIcon').textContent=isHot?'🔥':'';
-  const img=c.imgData?`<img src="${c.imgData}" alt="">`:'<div class="detail-img-placeholder">🃏</div>';
+  const imgSrc = c.imgData || c.cloudImgUrl || null;
+  const img=imgSrc?`<img src="${imgSrc}" alt="">`:'<div class="detail-img-placeholder">🃏</div>';
   const hotBox=isHot&&hotInfo?`<div class="hot-alert-box"><div class="hot-alert-title">🔥 This card is HOT right now</div><div class="hot-alert-body"><strong>${hotInfo.reason}</strong> — ${hotInfo.news}${hotInfo.sellWindow?'<br><br><strong>Sell window:</strong> '+hotInfo.sellWindow:''}</div></div>`:'';
   const fields=[['Player',c.player],['Team',c.team],['Sport',c.sport],['Year',c.year],['Brand',c.brand],['Set',c.set],['Parallel',c.parallel],['Numbered',c.numbered],['Rookie',c.rookie?'Yes':null],['Auto',c.auto?'Yes':null],['Relic',c.relic?'Yes':null],['Grade',c.grade],['Condition',c.condition]]
     .filter(([,v])=>v!=null)
