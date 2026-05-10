@@ -1485,33 +1485,26 @@ async function exchangeEbayCode(code){
   const appId = getEbayAppId();
   const certId = getEbayCertId();
   const ruName = getEbayRuName();
-
   if(!certId){ showToast('Save your Cert ID first, then reconnect'); return; }
-
-  const credentials = btoa(`${appId}:${certId}`);
   try{
-    const resp = await fetch('https://api.ebay.com/identity/v1/oauth2/token',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/x-www-form-urlencoded',
-        'Authorization':'Basic '+credentials,
-      },
-      body: `grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(ruName)}`
+    const resp = await fetch('/.netlify/functions/ebay-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, app_id: appId, cert_id: certId, ru_name: ruName, grant_type: 'authorization_code' })
     });
     const data = await resp.json();
     if(data.access_token){
       localStorage.setItem('cv_ebay_token', data.access_token);
       if(data.refresh_token) localStorage.setItem('cv_ebay_refresh_token', data.refresh_token);
-      // Store expiry
       const expiry = Date.now() + (data.expires_in || 7200) * 1000;
       localStorage.setItem('cv_ebay_token_expiry', expiry.toString());
       renderEbayStatus();
-      showToast(' eBay connected successfully!');
+      showToast('✓ eBay connected successfully!');
     } else {
-      throw new Error(data.error_description || 'Token exchange failed');
+      throw new Error(data.error_description || data.error || 'Token exchange failed');
     }
   } catch(err){
-    showToast(' Auth failed: ' + err.message);
+    showToast('❌ Auth failed: ' + err.message);
     console.error(err);
   }
 }
@@ -1519,21 +1512,15 @@ async function exchangeEbayCode(code){
 async function refreshEbayTokenIfNeeded(){
   const expiry = parseInt(localStorage.getItem('cv_ebay_token_expiry')||'0');
   const refreshToken = localStorage.getItem('cv_ebay_refresh_token');
-  // Refresh if within 5 minutes of expiry
   if(!refreshToken || Date.now() < expiry - 300000) return;
-
   const appId = getEbayAppId();
   const certId = getEbayCertId();
   if(!appId || !certId) return;
-
   try{
-    const resp = await fetch('https://api.ebay.com/identity/v1/oauth2/token',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/x-www-form-urlencoded',
-        'Authorization':'Basic '+btoa(`${appId}:${certId}`),
-      },
-      body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}&scope=https://api.ebay.com/oauth/api_scope/sell.inventory`
+    const resp = await fetch('/.netlify/functions/ebay-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken, app_id: appId, cert_id: certId, grant_type: 'refresh_token' })
     });
     const data = await resp.json();
     if(data.access_token){
