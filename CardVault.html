@@ -3192,11 +3192,11 @@ async function ebayImageUpload(base64, mime, token, appId){
 
 // eBay condition ID map
 const EBAY_CONDITIONS = {
-  near_mint:  {id:'400010', name:'Near Mint or Better'},
-  excellent:  {id:'400011', name:'Excellent'},
-  very_good:  {id:'400012', name:'Very Good'},
-  poor:       {id:'400013', name:'Poor'},
-  graded:     {id:'2750',   name:'Graded'},
+  near_mint: { id:'4000', descriptorId:'40001', descriptorValue:'400011', name:'Near Mint or Better', graded:false },
+  excellent:  { id:'4000', descriptorId:'40001', descriptorValue:'400012', name:'Excellent',           graded:false },
+  very_good:  { id:'4000', descriptorId:'40001', descriptorValue:'400013', name:'Very Good',           graded:false },
+  poor:       { id:'4000', descriptorId:'40001', descriptorValue:'400014', name:'Poor',                graded:false },
+  graded:     { id:'2750', descriptorId:null,    descriptorValue:null,     name:'Graded',              graded:true  },
 };
 
 const EBAY_CATEGORIES = {
@@ -3284,7 +3284,16 @@ async function submitEbayListing(){
 
   listBtn.innerHTML = '<span class="list-btn-icon">⏳</span> Creating listing...';
 
-  // Build item specifics — skip any with empty values (eBay rejects them)
+  // Build condition XML — eBay trading cards use ConditionID 4000/2750 + ConditionDescriptors
+  const conditionXml = condInfo.graded
+    ? `<ConditionID>2750</ConditionID>`
+    : `<ConditionID>4000</ConditionID>
+    <ConditionDescriptors>
+      <ConditionDescriptor>
+        <Name>${condInfo.descriptorId}</Name>
+        <Value>${condInfo.descriptorValue}</Value>
+      </ConditionDescriptor>
+    </ConditionDescriptors>`;
   const sp = (name, value) => value ? `<NameValueList><Name>${name}</Name><Value>${escXml(String(value))}</Value></NameValueList>` : '';
   const sportLeagueMap = {Baseball:'MLB',Basketball:'NBA',Football:'NFL',Hockey:'NHL',Soccer:'MLS'};
   const features = [c.rookie?'Rookie':null, c.auto?'Autograph':null, c.relic?'Memorabilia/Relic':null, c.numbered?'Serial Numbered':null].filter(Boolean).join('|') || 'Basic';
@@ -3328,7 +3337,7 @@ async function submitEbayListing(){
     <PrimaryCategory><CategoryID>${catId}</CategoryID></PrimaryCategory>
     ${priceXml}
     <CategoryMappingAllowed>true</CategoryMappingAllowed>
-    <ConditionID>${condInfo.id}</ConditionID>
+    ${conditionXml}
     <Country>US</Country><Currency>USD</Currency>
     <DispatchTimeMax>3</DispatchTimeMax>
     ${durationXml}
