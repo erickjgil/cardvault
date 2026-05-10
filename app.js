@@ -221,6 +221,7 @@ let hotLastFetch = parseInt(localStorage.getItem('cv_hot_ts') || '0');
 let currentFilter = 'all';
 let currentView = 'catalog';
 let prevView = 'catalog';
+let selectedCardId = null;
 
 // -- SUPABASE SYNC ----------------------------------------------
 // -- RUNTIME CONFIG (keys served from Netlify env vars, never in source) ----
@@ -404,15 +405,6 @@ async function pushCard(card){
     });
   }
 }
-    await sb.from('cards').upsert(payload);
-  } else {
-    await fetch(`${getSupabaseUrl()}/rest/v1/cards`, {
-      method: 'POST',
-      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify(payload)
-    });
-  }
-}
 
 // Push all local cards to cloud
 async function syncNow(){
@@ -549,14 +541,30 @@ function getHotSet(){
 function renderGrid(){
   const grid = document.getElementById('cardsGrid');
   const hotSet = getHotSet();
+  updateViewToggleBtn();
+
   let list;
   if(currentFilter==='sold') list = cards.filter(c=>c.sold);
   else if(currentFilter==='all') list = cards.filter(c=>!c.sold);
   else list = cards.filter(c=>c.sport===currentFilter&&!c.sold);
+
+  list = sortCards(list);
+
   if(!list.length){
-    grid.innerHTML=`<div class="empty-state"><div class="empty-icon"></div><h3>${cards.length?'No cards here':'Collection is empty'}</h3><p>${cards.length?'Try another filter':'Tap Add Card to photograph your first card'}</p></div>`;
+    grid.className='cards-grid'; grid.style.display='';
+    grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🃏</div><h3>${cards.length?'No cards here':'Collection is empty'}</h3><p>${cards.length?'Try another filter':'Tap Add Card to photograph your first card'}</p></div>`;
     return;
   }
+
+  // List view
+  if(viewMode==='list' && !lotMode){
+    grid.className=''; grid.style.display='block';
+    grid.innerHTML=renderListView(list, hotSet);
+    return;
+  }
+
+  // Grid view
+  grid.className='cards-grid'; grid.style.display='';
   grid.innerHTML = list.map(c=>{
     const hot = hotSet.has((c.player||'').toLowerCase());
     const badge = c.parallel ? `<div class="parallel-badge ${getBadgeClass(c.parallel)}">${c.parallel}</div>` : '';
@@ -569,9 +577,7 @@ function renderGrid(){
 
     if(lotMode){
       const sel = lotSelected.has(c.id);
-      const check = sel
-        ? `<div class="lot-check">✓</div>`
-        : `<div class="lot-check-empty"></div>`;
+      const check = sel ? `<div class="lot-check">✓</div>` : `<div class="lot-check-empty"></div>`;
       return `<div class="card-thumb lot-selectable${sel?' lot-selected':''}" onclick="toggleLotCard('${c.id}',event)">
         <div class="card-img-wrap">${img}${badge}${rc}${check}</div>
         <div class="card-info">
@@ -725,6 +731,139 @@ function openDetail(id){
     </div></div>`;
   prevView=currentView;
   showView('detail');
+  selectedCardId = id;
+}
+
+// -- EDIT CARD ─────────────────────────────────────────────────
+let editImgData = null;
+let editImgChanged = false;
+let editSport = 'Baseball';
+let editCardId = null;
+
+function openEditModal(id){
+  const c = cards.find(x=>x.id===id);
+  if(!c) return;
+  editCardId = id;
+  editImgData = c.imgData || c.cloudImgUrl || null;
+  editImgChanged = false;
+  editSport = c.sport || 'Baseball';
+
+  // Populate fields
+  document.getElementById('editPlayer').value = c.player || '';
+  document.getElementById('editYear').value = c.year || '';
+  document.getElementById('editTeam').value = c.team || '';
+  document.getElementById('editBrand').value = c.brand || '';
+  document.getElementById('editParallel').value = c.parallel || '';
+  document.getElementById('editNumbered').value = c.numbered || '';
+  document.getElementById('editGrade').value = c.grade || c.condition || '';
+  document.getElementById('editRookie').checked = !!c.rookie;
+  document.getElementById('editAuto').checked = !!c.auto;
+  document.getElementById('editRelic').checked = !!c.relic;
+  document.getElementById('editPriceMin').value = c.priceMin || '';
+  document.getElementById('editPriceMax').value = c.priceMax || '';
+  document.getElementById('editNotes').value = c.notes || '';
+
+  // Sport buttons
+  document.querySelectorAll('#editSportBtns .sport-btn').forEach(b=>{
+    b.classList.toggle('selected', b.textContent.includes({Baseball:'⚾',Basketball:'🏀',Football:'🏈',Hockey:'🏒',Soccer:'⚽'}[editSport]||''));
+  });
+
+  // Photo preview
+  const preview = document.getElementById('editPhotoPreview');
+  if(editImgData){
+    preview.innerHTML = `<img src="${editImgData}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    preview.innerHTML = '🃏';
+  }
+
+  document.getElementById('editModal').classList.remove('hidden');
+}
+
+function closeEditModal(){
+  document.getElementById('editModal').classList.add('hidden');
+  editImgData = null;
+  editImgChanged = false;
+  editCardId = null;
+}
+document.getElementById('editModal').addEventListener('click', function(e){ if(e.target===this) closeEditModal(); });
+
+function handleEditPhoto(input){
+  const file = input.files[0];
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    editImgData = e.target.result;
+    editImgChanged = true;
+    const preview = document.getElementById('editPhotoPreview');
+    preview.innerHTML = `<img src="${editImgData}" style="width:100%;height:100%;object-fit:cover">`;
+  };
+  r.readAsDataURL(file);
+  input.value = '';
+}
+
+function removeEditPhoto(){
+  editImgData = null;
+  editImgChanged = true;
+  document.getElementById('editPhotoPreview').innerHTML = '🃏';
+}
+
+function selectEditSport(sport, el){
+  editSport = sport;
+  document.querySelectorAll('#editSportBtns .sport-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function saveEditCard(){
+  const idx = cards.findIndex(x=>x.id===editCardId);
+  if(idx<0) return;
+
+  const player = document.getElementById('editPlayer').value.trim();
+  if(!player){ showToast('Player name is required'); return; }
+
+  const priceMin = parseFloat(document.getElementById('editPriceMin').value) || null;
+  const priceMax = parseFloat(document.getElementById('editPriceMax').value) || null;
+  const priceMid = priceMin && priceMax ? Math.round((priceMin+priceMax)/2) : (priceMin||priceMax||null);
+  const grade = document.getElementById('editGrade').value.trim() || null;
+
+  // Compress new image if changed
+  let imgData = cards[idx].imgData;
+  if(editImgChanged){
+    if(editImgData){
+      imgData = await compressImage(editImgData, 200) || editImgData;
+    } else {
+      imgData = null;
+    }
+  }
+
+  const updated = {
+    ...cards[idx],
+    player,
+    team: document.getElementById('editTeam').value.trim() || null,
+    sport: editSport,
+    year: document.getElementById('editYear').value.trim() || null,
+    brand: document.getElementById('editBrand').value.trim() || null,
+    parallel: document.getElementById('editParallel').value.trim() || null,
+    numbered: document.getElementById('editNumbered').value.trim() || null,
+    grade,
+    condition: grade || cards[idx].condition || 'Near Mint or Better',
+    rookie: document.getElementById('editRookie').checked,
+    auto: document.getElementById('editAuto').checked,
+    relic: document.getElementById('editRelic').checked,
+    priceMin, priceMax, priceMid,
+    notes: document.getElementById('editNotes').value.trim() || null,
+    imgData,
+    cloudImgUrl: editImgChanged ? null : cards[idx].cloudImgUrl, // reset cloud URL if image changed
+    // Regenerate eBay title
+    ebayTitle: generateEbayTitle({player, year: document.getElementById('editYear').value.trim(), brand: document.getElementById('editBrand').value.trim(), parallel: document.getElementById('editParallel').value.trim(), numbered: document.getElementById('editNumbered').value.trim(), rookie: document.getElementById('editRookie').checked, auto: document.getElementById('editAuto').checked, grade, team: document.getElementById('editTeam').value.trim()}),
+  };
+
+  cards[idx] = updated;
+  save();
+  updateStats();
+  renderGrid();
+  closeEditModal();
+  showToast('✓ Card updated');
+  openDetail(editCardId);
 }
 
 function editCost(id){
@@ -1108,6 +1247,67 @@ function generateEbayTitle(c){
   let title = parts.join(' ');
   if(title.length > 80) title = title.substring(0, 77) + '...';
   return title;
+}
+
+// -- VIEW & SORT ------------------------------------------------
+let viewMode = localStorage.getItem('cv_view') || 'grid';
+let sortOrder = localStorage.getItem('cv_sort') || 'added';
+
+function toggleView(){
+  viewMode = viewMode === 'grid' ? 'list' : 'grid';
+  localStorage.setItem('cv_view', viewMode);
+  const btn = document.getElementById('viewToggleBtn');
+  if(btn) btn.textContent = viewMode === 'grid' ? '⊞' : '☰';
+  renderGrid();
+}
+
+function setSortOrder(val){
+  sortOrder = val;
+  localStorage.setItem('cv_sort', val);
+  renderGrid();
+}
+
+function sortCards(list){
+  const sorted = [...list];
+  switch(sortOrder){
+    case 'player': return sorted.sort((a,b)=>(a.player||'').localeCompare(b.player||''));
+    case 'team':   return sorted.sort((a,b)=>(a.team||'').localeCompare(b.team||''));
+    case 'year':   return sorted.sort((a,b)=>(parseInt(b.year)||0)-(parseInt(a.year)||0));
+    case 'value_high': return sorted.sort((a,b)=>(b.priceMid||b.priceMin||0)-(a.priceMid||a.priceMin||0));
+    case 'value_low':  return sorted.sort((a,b)=>(a.priceMid||a.priceMin||0)-(b.priceMid||b.priceMin||0));
+    case 'sport':  return sorted.sort((a,b)=>(a.sport||'').localeCompare(b.sport||''));
+    default: return sorted;
+  }
+}
+
+function renderListView(list, hotSet){
+  if(!list.length) return `<div class="empty-state"><div class="empty-icon">🃏</div><h3>${cards.length?'No cards here':'Collection is empty'}</h3><p>${cards.length?'Try another filter':'Tap Add Card to get started'}</p></div>`;
+  return `<div class="cards-list">${list.map(c=>{
+    const hot = hotSet.has((c.player||'').toLowerCase());
+    const imgSrc = c.imgData || c.cloudImgUrl || null;
+    const thumb = imgSrc ? `<img src="${imgSrc}" alt="">` : ({Baseball:'⚾',Basketball:'🏀',Football:'🏈',Hockey:'🏒',Soccer:'⚽'}[c.sport]||'🃏');
+    const price = c.sold ? `<span style="color:var(--green);font-size:11px">Sold $${c.soldPrice||0}</span>` : (c.priceMid||c.priceMin ? `<span class="list-price">$${c.priceMid||c.priceMin}</span>` : '');
+    const chips = [c.parallel,c.numbered,c.grade,c.rookie?'RC':null,c.auto?'Auto':null].filter(Boolean).slice(0,3).map(x=>`<span class="chip">${x}</span>`).join('');
+    return `<div class="list-row${hot&&!c.sold?' hot-card':''}${c.sold?' sold-card':''}" onclick="openDetail('${c.id}')">
+      <div class="list-thumb">${thumb}</div>
+      <div class="list-body">
+        <div class="list-name">${c.player||'Unknown'}</div>
+        <div class="list-meta">${[c.team,c.year,c.brand].filter(Boolean).join(' · ')||'No details'}</div>
+      </div>
+      <div class="list-right">
+        ${price}
+        <div class="list-chips">${chips}</div>
+        ${hot&&!c.sold?'<span style="font-size:9px;color:var(--orange)">🔥</span>':''}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function updateViewToggleBtn(){
+  const btn = document.getElementById('viewToggleBtn');
+  if(btn) btn.textContent = viewMode === 'grid' ? '⊞' : '☰';
+  const sel = document.getElementById('sortSelect');
+  if(sel) sel.value = sortOrder;
 }
 
 // -- LOT MODE --------------------------------------------------
@@ -1768,12 +1968,11 @@ function renderEbayModalContent(c){
   const connWarning = !connected ? `<div style="background:rgba(255,124,58,.1);border:1px solid rgba(255,124,58,.3);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:12px;color:var(--orange)"> eBay not connected  go to Settings to add your credentials. You can still preview the listing.</div>` : '';
 
   const conditionOptions = [
-    {key:'gem_mint', label:'Gem Mint', sub:'PSA 10 / BGS 9.5+'},
-    {key:'near_mint', label:'Near Mint', sub:'PSA 89 / Ungraded NM'},
-    {key:'very_good', label:'Very Good', sub:'Lightly played'},
-    {key:'good', label:'Good', sub:'Visible wear'},
-    {key:'graded', label:'Graded', sub:'PSA/BGS/SGC slab'},
-    {key:'poor', label:'Poor', sub:'Heavy wear'},
+    {key:'near_mint', label:'Near Mint or Better', sub:'Fresh from pack, 1-3 soft corners'},
+    {key:'excellent', label:'Excellent', sub:'Light wear, rough edges, minor chipping'},
+    {key:'very_good', label:'Very Good', sub:'Moderate-heavy wear, creases possible'},
+    {key:'poor', label:'Poor', sub:'Extreme wear, torn edges, stains'},
+    {key:'graded', label:'Graded', sub:'PSA / BGS / SGC slab'},
   ].map(o=>`<div class="condition-btn${s.condition===o.key?' selected':''}" onclick="setModalCondition('${o.key}',this)">${o.label}<br><span style="font-size:9px;opacity:.7">${o.sub}</span></div>`).join('');
 
   const durations = s.type === 'auction'
@@ -1842,12 +2041,11 @@ function setModalCondition(key, el){
 
 // eBay condition ID map
 const EBAY_CONDITIONS = {
-  gem_mint: {id:'4000', name:'Very Good'},
-  near_mint: {id:'3000', name:'Very Good'},
-  very_good: {id:'3000', name:'Very Good'},
-  good: {id:'5000', name:'Good'},
-  graded: {id:'2750', name:'Like New'},
-  poor: {id:'7000', name:'For parts or not working'},
+  near_mint:  {id:'400010', name:'Near Mint or Better'},
+  excellent:  {id:'400011', name:'Excellent'},
+  very_good:  {id:'400012', name:'Very Good'},
+  poor:       {id:'400013', name:'Poor'},
+  graded:     {id:'2750',   name:'Graded'},
 };
 
 const EBAY_CATEGORIES = {
