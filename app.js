@@ -481,6 +481,7 @@ async function ensureStorageBucket(){
 }
 
 // Auto-sync after every save
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 function save(){
   localStorage.setItem('cv_cards', JSON.stringify(cards));
   // Debounced cloud sync  don't hammer Supabase on rapid changes
@@ -917,6 +918,7 @@ function clearAll(){
 
 // -- ADD CARD MODAL --------------------------------------------
 let manualImgData = null;
+let manualImgDataAll = [];
 let manualSport = 'Baseball';
 let manualCondition = '';
 
@@ -945,42 +947,70 @@ function chooseManualWithPhoto(){
 }
 
 function handleManualPhoto(input){
-  const file = input.files[0];
-  if(!file) return;
-  const r = new FileReader();
-  r.onload = e => {
-    manualImgData = e.target.result;
-    // If coming from add modal flow, open manual form
+  const files = Array.from(input.files);
+  if(!files.length) return;
+
+  // Read all files
+  const readers = files.map(file => new Promise(res => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.readAsDataURL(file);
+  }));
+
+  Promise.all(readers).then(results => {
+    // Use first image as primary, store all
+    manualImgData = results[0];
+    manualImgDataAll = results;
+
+    // Open manual form if not already open
     if(document.getElementById('manualModal').classList.contains('hidden')){
       resetManualForm();
       document.getElementById('manualModal').classList.remove('hidden');
     }
-    showManualPhotoPreview(manualImgData);
-  };
-  r.readAsDataURL(file);
+    showManualPhotoPreview(results);
+  });
   input.value = '';
 }
 
-function showManualPhotoPreview(imgData){
-  document.getElementById('manualPhotoPreview').innerHTML = `<img src="${imgData}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
-  document.getElementById('manualPhotoPreview').onclick = () => document.getElementById('manualFileInput').click();
+function showManualPhotoPreview(imgDataArr){
+  const arr = Array.isArray(imgDataArr) ? imgDataArr : [imgDataArr];
+  const preview = document.getElementById('manualPhotoPreview');
+  if(arr.length === 1){
+    preview.innerHTML = `<img src="${arr[0]}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+    preview.style.width = '80px';
+  } else {
+    // Show a small grid of thumbnails
+    preview.style.width = '100%';
+    preview.style.height = 'auto';
+    preview.style.flexWrap = 'wrap';
+    preview.style.gap = '4px';
+    preview.style.padding = '4px';
+    preview.innerHTML = arr.map((d,i) => `<img src="${d}" style="width:${arr.length<=4?'calc(50% - 2px)':'calc(33% - 2px)'};aspect-ratio:3/4;object-fit:cover;border-radius:5px${i===0?';border:2px solid var(--gold)':''}" title="${i===0?'Primary photo':'Photo '+(i+1)}">`).join('') +
+      `<div style="width:100%;font-size:9px;color:var(--text3);margin-top:2px">${arr.length} photos · first is primary</div>`;
+  }
+  preview.onclick = () => document.getElementById('manualFileInput').click();
 }
 
 function resetManualForm(){
   manualImgData = null;
+  manualImgDataAll = [];
   manualSport = 'Baseball';
   manualCondition = '';
   ['mPlayer','mYear','mTeam','mBrand','mParallel','mNumbered','mGrade','mPriceMin','mPriceMax','mNotes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   ['mRookie','mAuto','mRelic'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
   document.querySelectorAll('.sport-btn').forEach((b,i) => b.classList.toggle('selected', i===0));
   document.querySelectorAll('#manualModal .condition-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById('manualPhotoPreview').innerHTML = '<div style="font-size:9px">Add photo</div>';
-  document.getElementById('manualPhotoPreview').onclick = () => document.getElementById('manualFileInput').click();
+  const preview = document.getElementById('manualPhotoPreview');
+  preview.innerHTML = '📷<div style="font-size:9px">Add photo</div>';
+  preview.style.width = '80px';
+  preview.style.height = '104px';
+  preview.onclick = () => document.getElementById('manualFileInput').click();
 }
 
 function closeManualModal(){
   document.getElementById('manualModal').classList.add('hidden');
   manualImgData = null;
+  manualImgDataAll = [];
 }
 document.getElementById('manualModal').addEventListener('click', function(e){ if(e.target===this) closeManualModal(); });
 
