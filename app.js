@@ -1,5 +1,213 @@
 
+// -- SUPABASE AUTH CLIENT ---------------------------------------
+// Load Supabase JS via CDN (injected at runtime)
+let _supabaseClient = null;
+function getSB(){
+  if(_supabaseClient) return _supabaseClient;
+  if(typeof window !== 'undefined' && window._supabase){
+    _supabaseClient = window._supabase.createClient(getSupabaseUrl(), getSupabaseKey());
+  }
+  return _supabaseClient;
+}
+
+let currentUser = null;
+
+// -- AUTH FUNCTIONS --------------------------------------------
+let authMode = 'signin'; // 'signin' | 'signup'
+
+function showAuthScreen(){
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+function hideAuthScreen(){
+  document.getElementById('authScreen').classList.add('hidden');
+}
+
+function toggleAuthMode(){
+  authMode = authMode === 'signin' ? 'signup' : 'signin';
+  const btn = document.getElementById('authSubmitBtn');
+  const toggle = document.getElementById('authToggle');
+  if(authMode === 'signup'){
+    btn.textContent = 'Create account';
+    toggle.innerHTML = 'Already have an account? <span onclick="toggleAuthMode()">Sign in</span>';
+  } else {
+    btn.textContent = 'Sign in';
+    toggle.innerHTML = "Don't have an account? <span onclick=\"toggleAuthMode()\">Sign up</span>";
+  }
+  showAuthError('');
+}
+
+function showAuthError(msg){
+  const el = document.getElementById('authError');
+  if(msg){ el.textContent = msg; el.classList.add('show'); }
+  else { el.classList.remove('show'); }
+}
+
+async function submitAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if(!email || !password){ showAuthError('Please enter your email and password'); return; }
+
+  const btn = document.getElementById('authSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = authMode === 'signin' ? 'Signing in...' : 'Creating account...';
+  showAuthError('');
+
+  const sb = getSB();
+  if(!sb){ showAuthError('Connection error — check your internet'); btn.disabled=false; btn.textContent=authMode==='signin'?'Sign in':'Create account'; return; }
+
+  try{
+    let result;
+    if(authMode === 'signup'){
+      result = await sb.auth.signUp({email, password});
+      if(result.error) throw result.error;
+      if(result.data?.user?.identities?.length === 0){
+        showAuthError('An account with this email already exists. Try signing in.');
+        btn.disabled=false; btn.textContent='Create account'; return;
+      }
+      showAuthError('');
+      // If email confirmation required
+      if(!result.data?.session){
+        showToast('✓ Check your email to confirm your account');
+        btn.disabled=false; btn.textContent='Create account'; return;
+      }
+    } else {
+      result = await sb.auth.signInWithPassword({email, password});
+      if(result.error) throw result.error;
+    }
+    // Session established - onAuthStateChange will handle the rest
+  } catch(err){
+    const msg = err.message || 'Authentication failed';
+    showAuthError(msg.includes('Invalid login') ? 'Incorrect email or password' : msg);
+    btn.disabled=false;
+    btn.textContent=authMode==='signin'?'Sign in':'Create account';
+  }
+}
+
+async function signInWithGoogle(){
+  const sb = getSB();
+  if(!sb){ showAuthError('Connection error'); return; }
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+  if(error) showAuthError(error.message);
+}
+
+async function showForgotPassword(){
+  const email = document.getElementById('authEmail').value.trim();
+  const addr = email || prompt('Enter your email address:');
+  if(!addr) return;
+  const sb = getSB();
+  if(!sb) return;
+  const { error } = await sb.auth.resetPasswordForEmail(addr, {
+    redirectTo: window.location.origin + window.location.pathname + '?reset=true'
+  });
+  if(error) showAuthError(error.message);
+  else showToast('✓ Password reset email sent');
+}
+
+async function signOut(){
+  const sb = getSB();
+  if(sb) await sb.auth.signOut();
+  currentUser = null;
+  cards = [];
+  updateStats();
+  renderGrid();
+  document.getElementById('userBar').style.display = 'none';
+  showAuthScreen();
+  showToast('Signed out');
+}
+
+function onUserSignedIn(user){
+  currentUser = user;
+  hideAuthScreen();
+
+  // Show user bar
+  const bar = document.getElementById('userBar');
+  bar.style.display = 'flex';
+  const avatar = document.getElementById('userAvatar');
+  const pic = user.user_metadata?.avatar_url;
+  if(pic){ avatar.innerHTML = `<img src="${pic}" alt="">`; }
+  else { avatar.textContent = (user.email||'?')[0].toUpperCase(); }
+
+  // Load their cards from cloud
+  loadUserCards();
+}
+
+async function loadUserCards(){
+  if(!currentUser || !isSupabaseConnected()) return;
+  try{
+    const sbUrl = getSupabaseUrl();
+    const sb = getSB();
+    const { data, error } = await sb.from('cards').select('*').order('updated_at', {ascending:false});
+    if(error) throw error;
+    if(data && data.length > 0){
+      cards = data.map(row=>({
+        ...row.data,
+        id: row.id,
+        cloudImgUrl: row.img_url,
+        imgData: row.img_url || row.data?.imgData || null,
+      }));
+      localStorage.setItem('cv_cards', JSON.stringify(cards));
+      localStorage.setItem('cv_last_sync', Date.now().toString());
+    } else {
+      // No cloud cards — load from local storage as seed
+      const local = JSON.parse(localStorage.getItem('cv_cards')||'[]');
+      if(local.length > 0){
+        cards = local;
+        syncNow(); // push local cards up to cloud under this user
+      }
+    }
+    updateStats();
+    renderGrid();
+  } catch(e){
+    console.warn('loadUserCards failed', e);
+    // Fall back to local
+    cards = JSON.parse(localStorage.getItem('cv_cards')||'[]');
+    updateStats();
+    renderGrid();
+  }
+}
+
+// Initialize auth on startup
+async function initAuth(){
+  // Wait for Supabase SDK to be available
+  let attempts = 0;
+  while(!window._supabase && attempts < 20){
+    await new Promise(r=>setTimeout(r,100));
+    attempts++;
+  }
+
+  const sb = getSB();
+  if(!sb){
+    // No Supabase — run without auth (local only mode)
+    console.warn('Supabase not available, running in local mode');
+    cards = JSON.parse(localStorage.getItem('cv_cards')||'[]');
+    updateStats(); renderGrid();
+    return;
+  }
+
+  // Listen for auth state changes
+  sb.auth.onAuthStateChange((event, session)=>{
+    if(session?.user){
+      onUserSignedIn(session.user);
+    } else if(event === 'SIGNED_OUT'){
+      currentUser = null;
+      showAuthScreen();
+    }
+  });
+
+  // Check for existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if(session?.user){
+    onUserSignedIn(session.user);
+  } else {
+    showAuthScreen();
+  }
+}
+
 let cards = JSON.parse(localStorage.getItem('cv_cards') || '[]');
+
 let hotData = JSON.parse(localStorage.getItem('cv_hot') || 'null');
 let hotLastFetch = parseInt(localStorage.getItem('cv_hot_ts') || '0');
 let currentFilter = 'all';
@@ -145,7 +353,6 @@ async function uploadImageToSupabase(cardId, dataUrl){
 // Push a single card to Supabase
 async function pushCard(card){
   if(!isSupabaseConnected()) return;
-  const sbUrl = getSupabaseUrl();
 
   // Strip local imgData, use cloud URL instead
   const {imgData, ...cardData} = card;
@@ -155,20 +362,24 @@ async function pushCard(card){
   if(imgData && !imgUrl){
     imgUrl = await uploadImageToSupabase(card.id, imgData);
     if(imgUrl){
-      // Save cloud URL back to local card
       const idx = cards.findIndex(c=>c.id===card.id);
       if(idx>=0){ cards[idx].cloudImgUrl = imgUrl; }
       localStorage.setItem('cv_cards', JSON.stringify(cards));
     }
   }
 
-  const payload = { id: card.id, data: cardData, img_url: imgUrl, updated_at: new Date().toISOString() };
+  const payload = { id: card.id, data: cardData, img_url: imgUrl, updated_at: new Date().toISOString(), user_id: currentUser?.id || null };
 
-  await fetch(`${sbUrl}/rest/v1/cards`, {
-    method: 'POST',
-    headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify(payload)
-  });
+  const sb = getSB();
+  if(sb){
+    await sb.from('cards').upsert(payload);
+  } else {
+    await fetch(`${getSupabaseUrl()}/rest/v1/cards`, {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(payload)
+    });
+  }
 }
 
 // Push all local cards to cloud
@@ -202,23 +413,26 @@ async function syncNow(){
 async function pullFromCloud(){
   if(!isSupabaseConnected()){ showToast('Set up cloud sync first'); return; }
   if(!confirm('Pull from cloud? This will replace your local catalog with the cloud version.')) return;
-  updateSyncBar(' Pulling from cloud...');
+  updateSyncBar('⏳ Pulling from cloud...');
 
   try{
-    const sbUrl = getSupabaseUrl();
-    const resp = await fetch(`${sbUrl}/rest/v1/cards?select=*&order=updated_at.desc`, {
-      headers: sbHeaders()
-    });
-    if(!resp.ok) throw new Error('Failed to fetch: ' + resp.status);
-    const rows = await resp.json();
+    const sb = getSB();
+    let rows;
+    if(sb){
+      const { data, error } = await sb.from('cards').select('*').order('updated_at', {ascending:false});
+      if(error) throw error;
+      rows = data;
+    } else {
+      const resp = await fetch(`${getSupabaseUrl()}/rest/v1/cards?select=*&order=updated_at.desc`, { headers: sbHeaders() });
+      if(!resp.ok) throw new Error('Failed to fetch: ' + resp.status);
+      rows = await resp.json();
+    }
     if(!Array.isArray(rows)) throw new Error('Unexpected response');
 
-    // Merge cloud data + image URLs back into full card objects
     cards = rows.map(row => ({
       ...row.data,
       id: row.id,
       cloudImgUrl: row.img_url,
-      // Use cloud image URL as display image if no local copy
       imgData: row.img_url || row.data?.imgData || null,
     }));
 
@@ -227,9 +441,9 @@ async function pullFromCloud(){
     updateStats();
     renderGrid();
     updateSyncBar();
-    showToast(` Pulled ${cards.length} cards from cloud`);
+    showToast(`✓ Pulled ${cards.length} cards from cloud`);
   } catch(e){
-    updateSyncBar(' Pull failed: ' + e.message, true);
+    updateSyncBar('❌ Pull failed: ' + e.message, true);
     console.error(e);
   }
 }
@@ -238,12 +452,15 @@ async function pullFromCloud(){
 async function deleteCardFromCloud(id){
   if(!isSupabaseConnected()) return;
   const sbUrl = getSupabaseUrl();
+  const sbKey = getSupabaseKey();
   try{
-    await fetch(`${sbUrl}/rest/v1/cards?id=eq.${id}`, {
-      method: 'DELETE', headers: sbHeaders()
-    });
+    const sb = getSB();
+    if(sb){
+      await sb.from('cards').delete().eq('id', id);
+    } else {
+      await fetch(`${sbUrl}/rest/v1/cards?id=eq.${id}`, { method: 'DELETE', headers: sbHeaders() });
+    }
     // Also delete image
-    const sbKey = getSupabaseKey();
     await fetch(`${sbUrl}/storage/v1/object/card-images/cards/${id}.jpg`, {
       method: 'DELETE', headers: { 'apikey': sbKey, 'Authorization': 'Bearer '+sbKey }
     });
@@ -303,9 +520,13 @@ function showView(name){
 function goBack(){ showView(prevView||'catalog'); }
 
 function updateStats(){
+  const unsold = cards.filter(c=>!c.sold);
   document.getElementById('statTotal').textContent = cards.length;
-  document.getElementById('statValue').textContent = '$' + cards.reduce((a,c)=>a+(c.priceMin||0),0).toLocaleString();
-  document.getElementById('statRC').textContent = cards.filter(c=>c.rookie).length;
+  document.getElementById('statValue').textContent = '$' + unsold.reduce((a,c)=>a+(c.priceMid||c.priceMin||0),0).toLocaleString();
+  document.getElementById('statRC').textContent = cards.filter(c=>c.rookie&&!c.sold).length;
+  // Update sold count badge if it exists
+  const soldEl = document.getElementById('statSold');
+  if(soldEl) soldEl.textContent = cards.filter(c=>c.sold).length;
 }
 
 function getHotSet(){
@@ -316,7 +537,10 @@ function getHotSet(){
 function renderGrid(){
   const grid = document.getElementById('cardsGrid');
   const hotSet = getHotSet();
-  const list = currentFilter==='all' ? cards : cards.filter(c=>c.sport===currentFilter);
+  let list;
+  if(currentFilter==='sold') list = cards.filter(c=>c.sold);
+  else if(currentFilter==='all') list = cards.filter(c=>!c.sold);
+  else list = cards.filter(c=>c.sport===currentFilter&&!c.sold);
   if(!list.length){
     grid.innerHTML=`<div class="empty-state"><div class="empty-icon"></div><h3>${cards.length?'No cards here':'Collection is empty'}</h3><p>${cards.length?'Try another filter':'Tap Add Card to photograph your first card'}</p></div>`;
     return;
@@ -325,30 +549,31 @@ function renderGrid(){
     const hot = hotSet.has((c.player||'').toLowerCase());
     const badge = c.parallel ? `<div class="parallel-badge ${getBadgeClass(c.parallel)}">${c.parallel}</div>` : '';
     const rc = c.rookie ? '<div class="badge-rc">RC</div>' : '';
-    const fire = hot && !lotMode ? '<div class="fire-badge"> HOT</div>' : '';
-    const img = c.imgData ? `<img src="${c.imgData}" alt="">` : '<div class="card-img-placeholder"></div>';
+    const fire = hot && !lotMode && !c.sold ? '<div class="fire-badge">🔥 HOT</div>' : '';
+    const soldBadge = c.sold ? `<div style="position:absolute;bottom:5px;right:5px;background:var(--green);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px">✓ SOLD${c.soldPrice?' $'+c.soldPrice:''}</div>` : '';
+    const img = c.imgData ? `<img src="${c.imgData}" alt="">` : '<div class="card-img-placeholder">🃏</div>';
     const chips = [c.numbered,c.grade,c.auto?'Auto':null,c.relic?'Relic':null].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('');
 
     if(lotMode){
       const sel = lotSelected.has(c.id);
       const check = sel
-        ? `<div class="lot-check"></div>`
+        ? `<div class="lot-check">✓</div>`
         : `<div class="lot-check-empty"></div>`;
       return `<div class="card-thumb lot-selectable${sel?' lot-selected':''}" onclick="toggleLotCard('${c.id}',event)">
         <div class="card-img-wrap">${img}${badge}${rc}${check}</div>
         <div class="card-info">
           <div class="card-name">${c.player||'Identifying...'}</div>
-          <div class="card-meta">${[c.year,c.brand].filter(Boolean).join('  ')||c.team||''}</div>
+          <div class="card-meta">${[c.year,c.brand].filter(Boolean).join(' · ')||c.team||''}</div>
           <div class="card-chips">${chips}</div>
         </div>
       </div>`;
     }
 
-    return `<div class="card-thumb${hot?' hot-card':''}" onclick="openDetail('${c.id}')">
-      <div class="card-img-wrap">${img}${badge}${rc}${fire}</div>
+    return `<div class="card-thumb${hot&&!c.sold?' hot-card':''}${c.sold?' sold-card':''}" onclick="openDetail('${c.id}')">
+      <div class="card-img-wrap">${img}${badge}${rc}${fire}${soldBadge}</div>
       <div class="card-info">
         <div class="card-name">${c.player||'Identifying...'}</div>
-        <div class="card-meta">${[c.year,c.brand].filter(Boolean).join('  ')||c.team||''}</div>
+        <div class="card-meta">${[c.year,c.brand].filter(Boolean).join(' · ')||c.team||''}</div>
         <div class="card-chips">${chips}</div>
       </div>
     </div>`;
@@ -422,31 +647,101 @@ function openDetail(id){
   const isHot=hotSet.has((c.player||'').toLowerCase());
   const hotInfo=hotData&&hotData.cards?hotData.cards.find(x=>(x.player||'').toLowerCase()===(c.player||'').toLowerCase()):null;
   document.getElementById('detailTitle').textContent=c.player||'Card Detail';
-  document.getElementById('detailHotIcon').textContent=isHot?'':'';
-  const img=c.imgData?`<img src="${c.imgData}" alt="">`:'<div class="detail-img-placeholder"></div>';
-  const hotBox=isHot&&hotInfo?`<div class="hot-alert-box"><div class="hot-alert-title"> This card is HOT right now</div><div class="hot-alert-body"><strong>${hotInfo.reason}</strong>  ${hotInfo.news}${hotInfo.sellWindow?'<br><br><strong>Sell window:</strong> '+hotInfo.sellWindow:''}</div></div>`:'';
+  document.getElementById('detailHotIcon').textContent=isHot?'🔥':'';
+  const img=c.imgData?`<img src="${c.imgData}" alt="">`:'<div class="detail-img-placeholder">🃏</div>';
+  const hotBox=isHot&&hotInfo?`<div class="hot-alert-box"><div class="hot-alert-title">🔥 This card is HOT right now</div><div class="hot-alert-body"><strong>${hotInfo.reason}</strong> — ${hotInfo.news}${hotInfo.sellWindow?'<br><br><strong>Sell window:</strong> '+hotInfo.sellWindow:''}</div></div>`:'';
   const fields=[['Player',c.player],['Team',c.team],['Sport',c.sport],['Year',c.year],['Brand',c.brand],['Set',c.set],['Parallel',c.parallel],['Numbered',c.numbered],['Rookie',c.rookie?'Yes':null],['Auto',c.auto?'Yes':null],['Relic',c.relic?'Yes':null],['Grade',c.grade],['Condition',c.condition]]
     .filter(([,v])=>v!=null)
     .map(([k,v])=>`<div class="field"><span class="field-key">${k}</span><span class="field-val">${v}</span></div>`).join('');
-  const priceNote=isHot?` <span style="color:var(--orange);font-size:10px"> trending</span>`:'';
+  const priceNote=isHot?` <span style="color:var(--orange);font-size:10px">↑ trending</span>`:'';
+
+  // Cost & profit calculations
+  const costBasis=c.costBasis!=null?`$${c.costBasis}`:'—';
+  const profit=c.sold&&c.soldPrice!=null&&c.costBasis!=null?c.soldPrice-c.costBasis:null;
+  const profitColor=profit!=null?(profit>=0?'var(--green)':'var(--red)'):'';
+  const profitLabel=profit!=null?`${profit>=0?'+':''}$${profit.toFixed(2)}`:'';
+  const unrealized=(c.priceMid||c.priceMin||0)-(c.costBasis||0);
+
+  // Sold banner
+  const soldBanner=c.sold?`
+    <div style="background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:2px">✓ Sold${c.soldDate?' on '+new Date(c.soldDate).toLocaleDateString():''}</div>
+        <div style="font-size:12px;color:var(--text2)">Sale price: <span style="color:var(--text);font-weight:600;font-family:'DM Mono',monospace">$${c.soldPrice||0}</span>${profitLabel?' · P&L: <span style="color:'+profitColor+';font-weight:600;font-family:\'DM Mono\',monospace">'+profitLabel+'</span>':''}</div>
+      </div>
+      <button onclick="markUnsold('${id}')" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);font-size:11px;cursor:pointer;font-family:'Sora',sans-serif">Undo</button>
+    </div>`:'';
+
   document.getElementById('detailScroll').innerHTML=`
     <div class="detail-img-wrap">${img}</div>
+    ${soldBanner}
     ${hotBox}
     <div class="section"><div class="section-label">Card details</div><div class="fields">${fields}</div></div>
+
+    <div class="section">
+      <div class="section-label">Financials</div>
+      <div class="fields">
+        <div class="field">
+          <span class="field-key">Purchase price</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="field-val" id="costDisplay">${costBasis}</span>
+            <button onclick="editCost('${id}')" style="font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);cursor:pointer;font-family:'Sora',sans-serif">${c.costBasis!=null?'Edit':'Add'}</button>
+          </div>
+        </div>
+        ${c.priceMid||c.priceMin?`<div class="field"><span class="field-key">Est. sell value</span><span class="field-val" style="color:var(--green)">$${c.priceMid||c.priceMin||0}</span></div>`:''}
+        ${c.costBasis!=null&&(c.priceMid||c.priceMin)?`<div class="field"><span class="field-key">Unrealized gain</span><span class="field-val" style="color:${unrealized>=0?'var(--green)':'var(--red)'}">${unrealized>=0?'+':''}$${unrealized.toFixed(2)}</span></div>`:''}
+      </div>
+    </div>
+
     <div class="section"><div class="section-label">eBay listing</div>
     <div class="ebay-box">
-      <div class="ebay-title-text">${c.ebayTitle||''}</div>
-      <div class="ebay-desc">${c.ebayDesc||''}</div>
+      <div class="ebay-title-text">${c.ebayTitle||'—'}</div>
+      <div class="ebay-desc">${c.ebayDesc||'—'}</div>
       <div class="price-row">
-        <div><div class="price-label">Suggested price${priceNote}</div><div class="price-range">$${c.priceMin||0}$${c.priceMax||0} range</div></div>
+        <div><div class="price-label">Suggested price${priceNote}</div><div class="price-range">$${c.priceMin||0}–$${c.priceMax||0} range</div></div>
         <div class="price-val">$${c.priceMid||c.priceMin||0}</div>
       </div>
-      <button class="list-btn" onclick="openEbayModal('${id}')"><span class="list-btn-icon"></span> List on eBay</button>
+      ${!c.sold?`<button class="list-btn" onclick="openEbayModal('${id}')"><span class="list-btn-icon">🛒</span> List on eBay</button>`:''}
+      ${!c.sold?`<button onclick="openMarkSold('${id}')" style="width:100%;padding:11px;border-radius:8px;border:1px solid rgba(76,175,125,.3);background:rgba(76,175,125,.08);color:var(--green);font-size:13px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:8px">✓ Mark as Sold</button>`:''}
       <button class="copy-btn" onclick="copyListing('${id}')">Copy title + description</button>
       <button class="delete-btn" onclick="deleteCard('${id}')">Remove from catalog</button>
     </div></div>`;
   prevView=currentView;
   showView('detail');
+}
+
+function editCost(id){
+  const c=cards.find(x=>x.id===id);
+  if(!c) return;
+  const val=prompt('What did you pay for this card? ($):', c.costBasis!=null?c.costBasis:'');
+  if(val===null) return;
+  const num=parseFloat(val);
+  if(isNaN(num)||num<0){ showToast('Enter a valid price'); return; }
+  const idx=cards.findIndex(x=>x.id===id);
+  if(idx>=0){ cards[idx].costBasis=num; save(); }
+  showToast('✓ Purchase price saved');
+  openDetail(id);
+}
+
+function openMarkSold(id){
+  const c=cards.find(x=>x.id===id);
+  if(!c) return;
+  const val=prompt(`What did you sell ${c.player||'this card'} for? ($):`, c.soldPrice||c.priceMid||'');
+  if(val===null) return;
+  const num=parseFloat(val);
+  if(isNaN(num)||num<0){ showToast('Enter a valid price'); return; }
+  const idx=cards.findIndex(x=>x.id===id);
+  if(idx>=0){ cards[idx].sold=true; cards[idx].soldPrice=num; cards[idx].soldDate=new Date().toISOString(); save(); updateStats(); }
+  showToast('✓ Marked as sold for $'+num);
+  openDetail(id);
+}
+
+function markUnsold(id){
+  if(!confirm('Mark this card as unsold?')) return;
+  const idx=cards.findIndex(x=>x.id===id);
+  if(idx>=0){ delete cards[idx].sold; delete cards[idx].soldPrice; delete cards[idx].soldDate; save(); updateStats(); }
+  showToast('Marked as unsold');
+  openDetail(id);
 }
 
 function copyListing(id){
@@ -546,12 +841,71 @@ function hotRowHTML(c){
 }
 
 function exportCatalog(){
-  const blob=new Blob([JSON.stringify(cards,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='cardvault-export.json'; a.click();
+  // Build CSV
+  const headers = ['Player','Team','Sport','Year','Brand','Set','Parallel','Numbered','Rookie','Auto','Relic','Grade','Condition','Purchase Price','Est. Value (Low)','Est. Value (Mid)','Est. Value (High)','Unrealized Gain','Status','Sale Price','Sale Date','Realized P&L','eBay Listing ID','Notes'];
+
+  const esc = v => {
+    if(v==null) return '';
+    const s = String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+
+  const rows = cards.map(c => {
+    const cost = c.costBasis!=null ? c.costBasis : null;
+    const mid = c.priceMid || c.priceMin || null;
+    const unrealized = cost!=null && mid!=null ? (mid - cost).toFixed(2) : '';
+    const realizedPL = c.sold && c.soldPrice!=null && cost!=null ? (c.soldPrice - cost).toFixed(2) : '';
+    return [
+      c.player, c.team, c.sport, c.year, c.brand, c.set, c.parallel, c.numbered,
+      c.rookie?'Yes':'No', c.auto?'Yes':'No', c.relic?'Yes':'No',
+      c.grade, c.condition,
+      cost!=null?cost:'', c.priceMin||'', mid||'', c.priceMax||'',
+      unrealized,
+      c.sold?'Sold':'In collection',
+      c.soldPrice||'',
+      c.soldDate?new Date(c.soldDate).toLocaleDateString():'',
+      realizedPL,
+      c.ebayListingId||'',
+      c.notes||''
+    ].map(esc).join(',');
+  });
+
+  // Summary rows
+  const totalCards = cards.length;
+  const soldCards = cards.filter(c=>c.sold);
+  const unsoldCards = cards.filter(c=>!c.sold);
+  const totalCost = cards.reduce((a,c)=>a+(c.costBasis||0),0);
+  const totalSoldRevenue = soldCards.reduce((a,c)=>a+(c.soldPrice||0),0);
+  const totalSoldCost = soldCards.reduce((a,c)=>a+(c.costBasis||0),0);
+  const realizedPL = totalSoldRevenue - totalSoldCost;
+  const estUnsoldValue = unsoldCards.reduce((a,c)=>a+(c.priceMid||c.priceMin||0),0);
+  const unsoldCost = unsoldCards.reduce((a,c)=>a+(c.costBasis||0),0);
+  const unrealizedPL = estUnsoldValue - unsoldCost;
+
+  const summaryRows = [
+    '',
+    '"--- SUMMARY ---"',
+    `"Total cards","${totalCards}"`,
+    `"Total cards sold","${soldCards.length}"`,
+    `"Total cards in collection","${unsoldCards.length}"`,
+    `"Total amount invested","$${totalCost.toFixed(2)}"`,
+    `"Total sold revenue","$${totalSoldRevenue.toFixed(2)}"`,
+    `"Realized P&L (sold cards)","${realizedPL>=0?'+':''}$${realizedPL.toFixed(2)}"`,
+    `"Est. unsold collection value","$${estUnsoldValue.toFixed(2)}"`,
+    `"Unrealized P&L (unsold cards)","${unrealizedPL>=0?'+':''}$${unrealizedPL.toFixed(2)}"`,
+    `"Total P&L","${(realizedPL+unrealizedPL)>=0?'+':''}$${(realizedPL+unrealizedPL).toFixed(2)}"`,
+    `"Export date","${new Date().toLocaleDateString()}"`,
+  ];
+
+  const csv = [headers.join(','), ...rows, ...summaryRows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url;
+  a.download=`cardvault-export-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
   URL.revokeObjectURL(url);
-  showToast(' Export downloaded');
+  showToast('✓ CSV exported');
 }
 
 function clearAll(){
@@ -1582,37 +1936,10 @@ updateStats();
 renderGrid();
 if(hotData){ const hasOwned=(hotData.cards||[]).some(c=>c.inMyCollection); document.getElementById('hotDot').classList.toggle('show',hasOwned); }
 
-// On startup, pull latest from cloud if connected and local is empty or stale
-(async()=>{
-  if(isSupabaseConnected()){
-    const lastSync = parseInt(localStorage.getItem('cv_last_sync')||'0');
-    const ONE_HOUR = 60*60*1000;
-    // Auto-pull if: no cards locally, or last sync was over an hour ago
-    if(cards.length===0 || (Date.now()-lastSync)>ONE_HOUR){
-      try{
-        const sbUrl = getSupabaseUrl();
-        const resp = await fetch(`${sbUrl}/rest/v1/cards?select=*&order=updated_at.desc`, { headers: sbHeaders() });
-        if(resp.ok){
-          const rows = await resp.json();
-          if(Array.isArray(rows) && rows.length > 0){
-            const cloudCards = rows.map(row=>({ ...row.data, id:row.id, cloudImgUrl:row.img_url, imgData:row.img_url||row.data?.imgData||null }));
-            // Merge: keep local cards not in cloud, add cloud cards
-            const cloudIds = new Set(cloudCards.map(c=>c.id));
-            const localOnly = cards.filter(c=>!cloudIds.has(c.id));
-            cards = [...cloudCards, ...localOnly];
-            localStorage.setItem('cv_cards', JSON.stringify(cards));
-            localStorage.setItem('cv_last_sync', Date.now().toString());
-            updateStats();
-            renderGrid();
-            if(localOnly.length) syncNow(); // push any local-only cards up
-          }
-        }
-      } catch(e){ console.warn('Startup sync failed', e); }
-    }
-  }
-})();
+// Boot auth — shows login screen or loads user's cards
+initAuth();
 
-// Refresh status panels when settings opened  hooked into showView
+// Refresh status panels when settings opened — hooked into showView
 function onSettingsOpen(){
   setTimeout(()=>{ renderEbayStatus(); renderSupabaseStatus(); }, 50);
 }
