@@ -3149,62 +3149,37 @@ function updateCardField(id, field, value){
 // -- EBAY DIRECT API (no proxy server needed) -------------------
 const EBAY_API_URL = 'https://api.ebay.com/ws/api.dll';
 const EBAY_TOKEN_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
-const CORS_PROXY = 'https://corsproxy.io/?url=';
+const CF_WORKER = 'https://wandering-shadow-bb79.erickjgil.workers.dev';
 
 async function ebayApiCall(callName, xmlBody){
-  const url = CORS_PROXY + encodeURIComponent(EBAY_API_URL);
-  const resp = await fetch(url, {
+  const resp = await fetch(CF_WORKER, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'text/xml',
-      'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-      'X-EBAY-API-CALL-NAME': callName,
-      'X-EBAY-API-SITEID': '0',
-      'X-EBAY-API-APP-NAME': getEbayAppId(),
-    },
-    body: xmlBody,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'api', call_name: callName, app_id: getEbayAppId(), xml_body: xmlBody }),
   });
   return resp.text();
 }
 
 async function ebayTokenCall(body, appId, certId){
   const credentials = btoa(appId + ':' + certId);
-  // Try multiple CORS proxies in case one fails
-  const proxies = [
-    'https://corsproxy.io/?url=',
-    'https://api.allorigins.win/raw?url=',
-  ];
-
-  for(const proxy of proxies){
-    try{
-      const url = proxy + encodeURIComponent(EBAY_TOKEN_URL);
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + credentials,
-          'x-requested-with': 'XMLHttpRequest',
-        },
-        body,
-      });
-      const text = await resp.text();
-      console.log('eBay token response:', text.substring(0, 200));
-      try{ return JSON.parse(text); }
-      catch(e){ console.warn('Token parse failed:', text.substring(0,100)); continue; }
-    } catch(e){
-      console.warn('Proxy failed:', proxy, e.message);
-    }
-  }
-  throw new Error('All CORS proxies failed — check your internet connection');
+  const resp = await fetch(CF_WORKER, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'token', form_body: body, auth_header: 'Basic ' + credentials }),
+  });
+  const text = await resp.text();
+  console.log('eBay token response:', text.substring(0, 200));
+  return JSON.parse(text);
 }
 
 async function ebayImageUpload(base64, mime, token, appId){
-  const boundary = 'CardVault' + Date.now();
-  const xmlPart = '<?xml version="1.0" encoding="utf-8"?><UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents"><RequesterCredentials><eBayAuthToken>' + token + '</eBayAuthToken></RequesterCredentials><PictureSet>Supersize</PictureSet></UploadSiteHostedPicturesRequest>';
-  // For file:// or direct use, we send as XML with base64 embedded
-  // (modern eBay API accepts this for smaller images)
   const xml = '<?xml version="1.0" encoding="utf-8"?><UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents"><RequesterCredentials><eBayAuthToken>' + token + '</eBayAuthToken></RequesterCredentials><PictureSet>Supersize</PictureSet><PictureData>' + base64 + '</PictureData></UploadSiteHostedPicturesRequest>';
-  return ebayApiCall('UploadSiteHostedPictures', xml);
+  const resp = await fetch(CF_WORKER, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'api', call_name: 'UploadSiteHostedPictures', app_id: appId, xml_body: xml }),
+  });
+  return resp.text();
 }
 
 // eBay condition ID map
