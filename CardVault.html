@@ -3173,11 +3173,10 @@ async function ebayTokenCall(body, appId, certId){
 }
 
 async function ebayImageUpload(base64, mime, token, appId){
-  const xml = '<?xml version="1.0" encoding="utf-8"?><UploadSiteHostedPicturesRequest xmlns="urn:ebay:apis:eBLBaseComponents"><RequesterCredentials><eBayAuthToken>' + token + '</eBayAuthToken></RequesterCredentials><PictureSet>Supersize</PictureSet><PictureData>' + base64 + '</PictureData></UploadSiteHostedPicturesRequest>';
   const resp = await fetch(CF_WORKER, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'api', call_name: 'UploadSiteHostedPictures', app_id: appId, xml_body: xml }),
+    body: JSON.stringify({ type: 'image', image_base64: base64, image_mime: mime, token, app_id: appId }),
   });
   return resp.text();
 }
