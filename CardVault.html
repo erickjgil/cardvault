@@ -3192,16 +3192,17 @@ async function ebayImageUpload(base64, mime, token, appId){
 
 // eBay condition ID map
 const EBAY_CONDITIONS = {
-  near_mint: { id:'4000', descriptorId:'40001', descriptorValue:'400011', name:'Near Mint or Better', graded:false },
-  excellent:  { id:'4000', descriptorId:'40001', descriptorValue:'400012', name:'Excellent',           graded:false },
-  very_good:  { id:'4000', descriptorId:'40001', descriptorValue:'400013', name:'Very Good',           graded:false },
-  poor:       { id:'4000', descriptorId:'40001', descriptorValue:'400014', name:'Poor',                graded:false },
+  near_mint: { id:'4000', descriptorId:'40001', descriptorValue:'400010', name:'Near Mint or Better', graded:false },
+  excellent:  { id:'4000', descriptorId:'40001', descriptorValue:'400011', name:'Excellent',           graded:false },
+  very_good:  { id:'4000', descriptorId:'40001', descriptorValue:'400012', name:'Very Good',           graded:false },
+  poor:       { id:'4000', descriptorId:'40001', descriptorValue:'400013', name:'Poor',                graded:false },
   graded:     { id:'2750', descriptorId:null,    descriptorValue:null,     name:'Graded',              graded:true  },
 };
 
+// All sports trading card singles use the same eBay category 261328
 const EBAY_CATEGORIES = {
-  Baseball: '261328', Basketball: '261329', Football: '261330',
-  Hockey: '261331', Soccer: '261333',
+  Baseball: '261328', Basketball: '261328', Football: '261328',
+  Hockey: '261328', Soccer: '261328',
 };
 
 async function submitEbayListing(){
