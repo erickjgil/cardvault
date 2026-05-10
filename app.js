@@ -1088,12 +1088,13 @@ function chooseAiScan(){
 }
 
 function chooseManual(imgData){
-  manualImgData = imgData || null;
-  manualSport = 'Baseball';
-  manualCondition = '';
   closeAddModal();
   resetManualForm();
-  if(imgData) showManualPhotoPreview(imgData);
+  // Set AFTER reset so it doesn't get wiped
+  if(imgData){
+    manualImgData = imgData;
+    showManualPhotoPreview(imgData);
+  }
   document.getElementById('manualModal').classList.remove('hidden');
 }
 
@@ -1115,14 +1116,18 @@ function handleManualPhoto(input){
 
   Promise.all(readers).then(results => {
     // Use first image as primary, store all
-    manualImgData = results[0];
-    manualImgDataAll = results;
+    const imgData = results[0];
+    const imgDataAll = results;
 
-    // Open manual form if not already open
+    // Open manual form if not already open — reset BEFORE setting image
     if(document.getElementById('manualModal').classList.contains('hidden')){
       resetManualForm();
       document.getElementById('manualModal').classList.remove('hidden');
     }
+
+    // Set AFTER reset so it doesn't get wiped
+    manualImgData = imgData;
+    manualImgDataAll = imgDataAll;
     showManualPhotoPreview(results);
   });
   input.value = '';
