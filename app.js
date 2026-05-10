@@ -668,10 +668,13 @@ async function analyzeCard(imgData, filename, key){
     let info={};
     try{ const raw=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join(''); info=JSON.parse(raw.replace(/```json|```/g,'').trim()); }
     catch(e){ info={player:'Unknown Card',sport:'Baseball',priceMin:5,priceMax:20,priceMid:10,condition:'Near Mint',ebayTitle:'Sports Card',ebayDesc:'Sports card in good condition.'}; }
-    const card={id:uid(),imgData,...info};
+
+    // Compress image before saving
+    const compressed = await compressImage(imgData, 200);
+    const card={id:uid(), imgData: compressed || imgData, ...info};
     cards.push(card);
     save(); updateStats(); renderGrid();
-    showToast(' Identified: '+(info.player||'Card'));
+    showToast('✓ Identified: '+(info.player||'Card'));
     openDetail(card.id);
   } catch(e){ showToast('Error  check API key in Settings'); console.error(e); }
   finally{ ov.classList.add('hidden'); }
@@ -1095,19 +1098,32 @@ function saveManualCard(){
     priceMax: priceMax || null,
     priceMid: priceMid || null,
     notes: document.getElementById('mNotes').value.trim() || null,
-    // Auto-generate eBay title
     ebayTitle: generateEbayTitle({player, year: document.getElementById('mYear').value.trim(), brand: document.getElementById('mBrand').value.trim(), parallel: document.getElementById('mParallel').value.trim(), numbered: document.getElementById('mNumbered').value.trim(), rookie: document.getElementById('mRookie').checked, auto: document.getElementById('mAuto').checked, grade, team: document.getElementById('mTeam').value.trim()}),
     ebayDesc: `${player}${document.getElementById('mYear').value?' '+document.getElementById('mYear').value:''}${document.getElementById('mBrand').value?' '+document.getElementById('mBrand').value:''} sports card${document.getElementById('mRookie').checked?' rookie card':''}${document.getElementById('mAuto').checked?', autographed':''}${document.getElementById('mRelic').checked?', with relic/patch':''}. Condition: ${condition}.${document.getElementById('mNotes').value?' '+document.getElementById('mNotes').value:''}`,
     manualEntry: true,
   };
 
-  cards.push(card);
-  save();
-  updateStats();
-  renderGrid();
-  closeManualModal();
-  showToast(' Card saved: ' + player);
-  openDetail(card.id);
+  // Compress image before saving if present
+  if(manualImgData){
+    compressImage(manualImgData, 200).then(compressed => {
+      card.imgData = compressed || manualImgData;
+      cards.push(card);
+      save();
+      updateStats();
+      renderGrid();
+      closeManualModal();
+      showToast('✓ Card saved: ' + player);
+      openDetail(card.id);
+    });
+  } else {
+    cards.push(card);
+    save();
+    updateStats();
+    renderGrid();
+    closeManualModal();
+    showToast('✓ Card saved: ' + player);
+    openDetail(card.id);
+  }
 }
 
 function generateEbayTitle(c){
@@ -1573,9 +1589,16 @@ async function refreshEbayTokenIfNeeded(){
 async function uploadImageToEbay(base64DataUrl){
   if(!base64DataUrl) return null;
   const token = getEbayToken();
-  if(!token) return null;
+  if(!token){ console.warn('uploadImageToEbay: no token'); return null; }
+
+  // Handle both base64 data URLs and regular https URLs
+  if(base64DataUrl.startsWith('http')){
+    // Already a hosted URL — return as-is
+    return base64DataUrl;
+  }
+
   const base64 = base64DataUrl.split(',')[1];
-  if(!base64) return null;
+  if(!base64){ console.warn('uploadImageToEbay: could not extract base64'); return null; }
 
   try{
     const xml = `<?xml version="1.0" encoding="utf-8"?>
@@ -1591,9 +1614,12 @@ async function uploadImageToEbay(base64DataUrl){
       body: JSON.stringify({ call_name: 'UploadSiteHostedPictures', app_id: getEbayAppId(), xml_body: xml })
     });
     const text = await resp.text();
+    console.log('eBay image upload response:', text.substring(0, 500));
     const urlMatch = text.match(/<FullURL>(.*?)<\/FullURL>/);
+    const errMatch = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/);
     if(urlMatch) return urlMatch[1];
-  } catch(e){ console.warn('Image upload failed', e); }
+    if(errMatch) console.warn('eBay image upload error:', errMatch[1]);
+  } catch(e){ console.warn('Image upload failed:', e); }
   return null;
 }
 
@@ -1888,13 +1914,26 @@ async function submitEbayListing(){
   const zip = getSellerZip();
   const shipCost = getShippingSingle();
 
-  // Upload image first
+  // Upload image first — required by eBay
   let pictureUrl = '';
-  if(c.imgData){
+  const imgSource = c.imgData || c.cloudImgUrl || null;
+  if(imgSource){
     listBtn.innerHTML = '<span class="list-btn-icon">📤</span> Uploading photo...';
-    const uploaded = await uploadImageToEbay(c.imgData);
-    pictureUrl = uploaded || '';
-    if(!uploaded) showToast('⚠ Photo upload failed — listing without image');
+    const uploaded = await uploadImageToEbay(imgSource);
+    if(uploaded){
+      pictureUrl = uploaded;
+    } else {
+      // Photo upload failed — warn user but don't block
+      showToast('⚠ Photo upload failed — eBay requires at least 1 photo');
+      listBtn.disabled = false;
+      listBtn.innerHTML = '<span class="list-btn-icon">🛒</span> Post to eBay';
+      return;
+    }
+  } else {
+    showToast('⚠ This card has no photo — please add one before listing on eBay');
+    listBtn.disabled = false;
+    listBtn.innerHTML = '<span class="list-btn-icon">🛒</span> Post to eBay';
+    return;
   }
 
   listBtn.innerHTML = '<span class="list-btn-icon">⏳</span> Creating listing...';
