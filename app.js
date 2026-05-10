@@ -2128,6 +2128,30 @@ async function submitEbayListing(){
 
   listBtn.innerHTML = '<span class="list-btn-icon">⏳</span> Creating listing...';
 
+  // Build item specifics — skip any with empty values (eBay rejects them)
+  const sp = (name, value) => value ? `<NameValueList><Name>${name}</Name><Value>${escXml(String(value))}</Value></NameValueList>` : '';
+  const sportLeagueMap = {Baseball:'MLB',Basketball:'NBA',Football:'NFL',Hockey:'NHL',Soccer:'MLS'};
+  const features = [c.rookie?'Rookie':null, c.auto?'Autograph':null, c.relic?'Memorabilia/Relic':null, c.numbered?'Serial Numbered':null].filter(Boolean).join('|') || 'Basic';
+  const gradingService = c.grade ? (c.grade.includes('PSA')?'PSA':c.grade.includes('BGS')||c.grade.includes('Beckett')?'BGS':c.grade.includes('SGC')?'SGC':null) : null;
+  const itemSpecificsXml = `<ItemSpecifics>
+      ${sp('Player/Athlete', c.player)}
+      ${sp('Manufacturer', c.brand || 'Unknown')}
+      ${sp('Season', c.year)}
+      ${sp('Set', c.set || c.brand || 'Base Set')}
+      ${sp('Card Name', c.player)}
+      ${sp('Team', c.team)}
+      ${sp('Sport', c.sport)}
+      ${sp('League', sportLeagueMap[c.sport] || c.sport)}
+      ${sp('Type', 'Sports Trading Card')}
+      ${sp('Parallel/Variety', c.parallel || 'Base')}
+      ${sp('Features', features)}
+      ${sp('Autographed', c.auto ? 'Yes' : 'No')}
+      ${sp('Card Number', c.numbered)}
+      ${sp('Grade', c.grade)}
+      ${sp('Grading Service', gradingService)}
+      ${sp('Condition', condInfo.name)}
+    </ItemSpecifics>`;
+
   const descBody = `${c.ebayDesc||'Sports card in good condition.'}\n\n${[c.auto?'✓ Autographed':null, c.relic?'✓ Relic/Patch':null, c.rookie?'✓ Rookie Card':null, c.numbered?'✓ Numbered '+c.numbered:null].filter(Boolean).join('\n')}\nCondition: ${condInfo.name}`;
 
   // Build XML — BIN and Auction have different price/duration structures
@@ -2157,20 +2181,7 @@ async function submitEbayListing(){
     ${pictureUrl ? `<PictureDetails><PictureURL>${escXml(pictureUrl)}</PictureURL></PictureDetails>` : ''}
     <PostalCode>${escXml(zip)}</PostalCode>
     <Quantity>1</Quantity>
-    <ItemSpecifics>
-      <NameValueList><Name>Manufacturer</Name><Value>${escXml(c.brand||'Unknown')}</Value></NameValueList>
-      <NameValueList><Name>Player</Name><Value>${escXml(c.player||'Unknown')}</Value></NameValueList>
-      <NameValueList><Name>Sport</Name><Value>${escXml(c.sport||'')}</Value></NameValueList>
-      <NameValueList><Name>Season</Name><Value>${escXml(c.year||'')}</Value></NameValueList>
-      <NameValueList><Name>Team</Name><Value>${escXml(c.team||'')}</Value></NameValueList>
-      <NameValueList><Name>Card Name</Name><Value>${escXml(c.player||'')}</Value></NameValueList>
-      <NameValueList><Name>Set</Name><Value>${escXml(c.set||c.brand||'')}</Value></NameValueList>
-      ${c.parallel ? `<NameValueList><Name>Parallel/Variety</Name><Value>${escXml(c.parallel)}</Value></NameValueList>` : ''}
-      ${c.numbered ? `<NameValueList><Name>Print Run</Name><Value>${escXml(c.numbered)}</Value></NameValueList>` : ''}
-      ${c.grade ? `<NameValueList><Name>Grade</Name><Value>${escXml(c.grade)}</Value></NameValueList>` : ''}
-      <NameValueList><Name>Autographed</Name><Value>${c.auto ? 'Yes' : 'No'}</Value></NameValueList>
-      <NameValueList><Name>Rookie Card</Name><Value>${c.rookie ? 'Yes' : 'No'}</Value></NameValueList>
-    </ItemSpecifics>
+    ${itemSpecificsXml}
     <ReturnPolicy>
       <ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>
       <RefundOption>MoneyBack</RefundOption>
