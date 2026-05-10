@@ -144,11 +144,12 @@ async function loadUserCards(){
     const { data, error } = await sb.from('cards').select('*').order('updated_at', {ascending:false});
     if(error) throw error;
     if(data && data.length > 0){
-      cards = data.map(row=>({
+      cards = data.map(row => ({
         ...row.data,
         id: row.id,
         cloudImgUrl: row.img_url,
-        imgData: row.img_url || row.data?.imgData || null,
+        // Image is stored in data.imgData directly
+        imgData: row.data?.imgData || row.img_url || null,
       }));
       localStorage.setItem('cv_cards', JSON.stringify(cards));
       localStorage.setItem('cv_last_sync', Date.now().toString());
@@ -390,24 +391,33 @@ async function uploadImageToSupabase(cardId, dataUrl){
 async function pushCard(card){
   if(!isSupabaseConnected()) return;
 
-  // Strip local imgData, use cloud URL instead
-  const {imgData, ...cardData} = card;
-  let imgUrl = card.cloudImgUrl || null;
-
-  // Upload image if not yet in cloud
-  if(imgData && !imgUrl){
-    imgUrl = await uploadImageToSupabase(card.id, imgData);
-    if(imgUrl){
-      const idx = cards.findIndex(c=>c.id===card.id);
-      if(idx>=0){ cards[idx].cloudImgUrl = imgUrl; }
-      localStorage.setItem('cv_cards', JSON.stringify(cards));
-    }
+  // Compress image and store inline in the data column
+  // (avoids Supabase Storage auth complexity)
+  let cardData = {...card};
+  if(card.imgData && !card.imgData.startsWith('http')){
+    const compressed = await compressImage(card.imgData, 150);
+    cardData.imgData = compressed || card.imgData;
   }
 
-  const payload = { id: card.id, data: cardData, img_url: imgUrl, updated_at: new Date().toISOString(), user_id: currentUser?.id || null };
+  const payload = {
+    id: card.id,
+    data: cardData,
+    img_url: card.cloudImgUrl || null,
+    updated_at: new Date().toISOString(),
+    user_id: currentUser?.id || null
+  };
 
   const sb = getSB();
   if(sb){
+    await sb.from('cards').upsert(payload);
+  } else {
+    await fetch(`${getSupabaseUrl()}/rest/v1/cards`, {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(payload)
+    });
+  }
+}
     await sb.from('cards').upsert(payload);
   } else {
     await fetch(`${getSupabaseUrl()}/rest/v1/cards`, {
@@ -469,7 +479,7 @@ async function pullFromCloud(){
       ...row.data,
       id: row.id,
       cloudImgUrl: row.img_url,
-      imgData: row.img_url || row.data?.imgData || null,
+      imgData: row.data?.imgData || row.img_url || null,
     }));
 
     localStorage.setItem('cv_cards', JSON.stringify(cards));
