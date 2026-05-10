@@ -176,6 +176,9 @@ async function initAuth(){
   // Load config (env vars) from Netlify function first
   await loadConfig();
 
+  // Reset client so it gets rebuilt with fresh credentials
+  _supabaseClient = null;
+
   // Wait for Supabase SDK to be available
   let attempts = 0;
   while(!window._supabase && attempts < 20){
@@ -1864,30 +1867,48 @@ async function submitEbayListing(){
 
   const listBtn = document.querySelector('#ebayModal .list-btn');
   listBtn.disabled = true;
-  listBtn.innerHTML = '<span class="list-btn-icon"></span> Uploading photo...';
+  listBtn.innerHTML = '<span class="list-btn-icon">⏳</span> Preparing...';
 
   const s = ebayListingState;
   const token = getEbayToken();
   const condInfo = EBAY_CONDITIONS[s.condition] || EBAY_CONDITIONS.near_mint;
   const catId = EBAY_CATEGORIES[c.sport] || '261328';
   const isAuction = s.type === 'auction';
-  const price = parseFloat(document.getElementById('modalBinPrice')?.value || s.price) || 10;
-  const startPrice = parseFloat(document.getElementById('modalStartPrice')?.value || s.startPrice) || 1;
+
+  // Read prices from the live input fields
+  const binPriceEl = document.getElementById('modalBinPrice');
+  const startPriceEl = document.getElementById('modalStartPrice');
+  const binPrice = parseFloat(binPriceEl?.value) || parseFloat(s.price) || 9.99;
+  const startPrice = parseFloat(startPriceEl?.value) || parseFloat(s.startPrice) || 0.99;
+
+  // Validate
+  if(isAuction && startPrice < 0.99){ showToast('Starting bid must be at least $0.99'); listBtn.disabled=false; listBtn.innerHTML='<span>🛒</span> Post to eBay'; return; }
+  if(!isAuction && binPrice < 0.99){ showToast('Buy It Now price must be at least $0.99'); listBtn.disabled=false; listBtn.innerHTML='<span>🛒</span> Post to eBay'; return; }
+
   const zip = getSellerZip();
   const shipCost = getShippingSingle();
 
-  // Upload image to eBay's servers first
+  // Upload image first
   let pictureUrl = '';
   if(c.imgData){
-    listBtn.innerHTML = '<span class="list-btn-icon"></span> Uploading photo to eBay...';
+    listBtn.innerHTML = '<span class="list-btn-icon">📤</span> Uploading photo...';
     const uploaded = await uploadImageToEbay(c.imgData);
     pictureUrl = uploaded || '';
-    if(!uploaded) showToast(' Photo upload failed  listing without image');
+    if(!uploaded) showToast('⚠ Photo upload failed — listing without image');
   }
 
-  listBtn.innerHTML = '<span class="list-btn-icon"></span> Creating listing...';
+  listBtn.innerHTML = '<span class="list-btn-icon">⏳</span> Creating listing...';
 
-  const descBody = `${c.ebayDesc||'Sports card in good condition.'}\n\n${[c.auto?' Autographed':null, c.relic?' Relic/Patch':null, c.rookie?' Rookie Card':null, c.numbered?' Numbered '+c.numbered:null].filter(Boolean).join('\n')}\nCondition: ${condInfo.name}`;
+  const descBody = `${c.ebayDesc||'Sports card in good condition.'}\n\n${[c.auto?'✓ Autographed':null, c.relic?'✓ Relic/Patch':null, c.rookie?'✓ Rookie Card':null, c.numbered?'✓ Numbered '+c.numbered:null].filter(Boolean).join('\n')}\nCondition: ${condInfo.name}`;
+
+  // Build XML — BIN and Auction have different price/duration structures
+  const priceXml = isAuction
+    ? `<StartPrice>${startPrice.toFixed(2)}</StartPrice>${binPrice > startPrice ? `<BuyItNowPrice>${binPrice.toFixed(2)}</BuyItNowPrice>` : ''}`
+    : `<StartPrice>${binPrice.toFixed(2)}</StartPrice>`;
+
+  const durationXml = isAuction
+    ? `<ListingDuration>Days_${s.duration}</ListingDuration>`
+    : `<ListingDuration>GTC</ListingDuration>`;
 
   const xml = `<?xml version="1.0" encoding="utf-8"?>
 <AddItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
@@ -1896,14 +1917,12 @@ async function submitEbayListing(){
     <Title>${escXml(c.ebayTitle||'Sports Card')}</Title>
     <Description><![CDATA[${descBody}]]></Description>
     <PrimaryCategory><CategoryID>${catId}</CategoryID></PrimaryCategory>
-    <StartPrice>${isAuction ? startPrice : price}</StartPrice>
-    ${isAuction && price ? `<BuyItNowPrice>${price}</BuyItNowPrice>` : ''}
-    ${!isAuction ? `<BuyItNowPrice>${price}</BuyItNowPrice>` : ''}
+    ${priceXml}
     <CategoryMappingAllowed>true</CategoryMappingAllowed>
     <ConditionID>${condInfo.id}</ConditionID>
     <Country>US</Country><Currency>USD</Currency>
     <DispatchTimeMax>3</DispatchTimeMax>
-    <ListingDuration>${isAuction ? 'Days_'+s.duration : 'GTC'}</ListingDuration>
+    ${durationXml}
     <ListingType>${isAuction ? 'Chinese' : 'FixedPriceItem'}</ListingType>
     <PaymentMethods>PayPal</PaymentMethods>
     ${pictureUrl ? `<PictureDetails><PictureURL>${escXml(pictureUrl)}</PictureURL></PictureDetails>` : ''}
