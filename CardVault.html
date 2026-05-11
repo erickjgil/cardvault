@@ -706,20 +706,14 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
       <div class="toolbar" id="normalToolbar">
         <div class="tabs">
           <div class="tab active" onclick="filterCards('all',this)">All</div>
-          <div class="tab" onclick="filterCards('Baseball',this)">⚾</div>
-          <div class="tab" onclick="filterCards('Basketball',this)">🏀</div>
-          <div class="tab" onclick="filterCards('Football',this)">🏈</div>
-          <div class="tab" onclick="filterCards('Hockey',this)">🏒</div>
-          <div class="tab" onclick="filterCards('sold',this)">✓ Sold</div>
+          <div class="tab" onclick="filterCards('sold',this)">Sold</div>
+          <div class="tab" onclick="filterCards('Baseball',this)">Baseball</div>
+          <div class="tab" onclick="filterCards('Basketball',this)">Basketball</div>
+          <div class="tab" onclick="filterCards('Football',this)">Football</div>
+          <div class="tab" onclick="filterCards('Soccer',this)">Soccer</div>
+          <div class="tab" onclick="filterCards('Hockey',this)">Hockey</div>
         </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;align-items:center">
-          <!-- Desktop stats (hidden on mobile via topbar) -->
-          <div class="desktop-stats" style="display:none;gap:16px;margin-right:12px;border-right:1px solid var(--border);padding-right:12px">
-            <div style="text-align:center"><div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--gold)" id="statTotal2">0</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Cards</div></div>
-            <div style="text-align:center"><div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--gold)" id="statValue2">$0</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Value</div></div>
-            <div style="text-align:center"><div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--gold)" id="statSold2">0</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Sold</div></div>
-          </div>
-          <!-- Sort dropdown -->
+        <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
           <select id="sortSelect" onchange="setSortOrder(this.value)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:11px;padding:5px 8px;font-family:'Sora',sans-serif;cursor:pointer">
             <option value="added">Date added</option>
             <option value="player">Player A-Z</option>
@@ -727,17 +721,10 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
             <option value="year">Year</option>
             <option value="value_high">Value ↓</option>
             <option value="value_low">Value ↑</option>
-            <option value="sport">Sport</option>
           </select>
-          <!-- View toggle -->
           <button id="viewToggleBtn" onclick="toggleView()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:14px;padding:5px 9px;cursor:pointer;line-height:1">⊞</button>
           <button class="lot-mode-btn" onclick="enterLotMode()" title="Sell as lot">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
-            Lot
-          </button>
-          <button class="upload-btn" onclick="openAddModal()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-            Add
+            <i class="ti ti-shopping-bag" style="font-size:13px"></i> Lot
           </button>
         </div>
       </div>
@@ -1824,18 +1811,11 @@ function updateStats(){
   const value = '$' + unsold.reduce((a,c)=>a+(c.priceMid||c.priceMin||0),0).toLocaleString();
   const rcs = cards.filter(c=>c.rookie&&!c.sold).length;
   const sold = cards.filter(c=>c.sold).length;
-
-  // Mobile topbar
   const el = id => document.getElementById(id);
   if(el('statTotal')) el('statTotal').textContent = total;
   if(el('statValue')) el('statValue').textContent = value;
   if(el('statRC')) el('statRC').textContent = rcs;
   if(el('statSold')) el('statSold').textContent = sold;
-
-  // Desktop toolbar
-  if(el('statTotal2')) el('statTotal2').textContent = total;
-  if(el('statValue2')) el('statValue2').textContent = value;
-  if(el('statSold2')) el('statSold2').textContent = sold;
 }
 
 function getHotSet(){
