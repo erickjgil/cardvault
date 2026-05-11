@@ -571,7 +571,7 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
     flex-direction:row;
     overflow:hidden;
   }
-  .detail-header-bar{ display:none; }
+  .detail-header-bar{ border-bottom:1px solid var(--border); }
   #detailScroll{
     max-width:680px;
     margin:0 auto;
@@ -2111,18 +2111,16 @@ function openDetail(id){
       </div>
 
       <button class="list-btn" onclick="openEbayModal('${id}')">
-        <span class="list-btn-icon">🛒</span> ${isListed?'Relist / Update':'List on eBay'}
+        <i class="ti ti-shopping-cart" style="font-size:16px"></i> ${isListed?'Relist':'List on eBay'}
       </button>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;margin-bottom:8px">
-        <button onclick="openMarkSold('${id}')" style="padding:11px;border-radius:8px;border:1px solid rgba(76,175,125,.3);background:rgba(76,175,125,.08);color:var(--green);font-size:13px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif">✓ Sold</button>
-        <button class="copy-btn" style="margin:0" onclick="copyListing('${id}')">Copy listing</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px;margin-bottom:8px">
+        <button onclick="openMarkSold('${id}')" style="padding:10px 6px;border-radius:8px;border:1px solid rgba(76,175,125,.3);background:rgba(76,175,125,.08);color:var(--green);font-size:12px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif">✓ Sold</button>
+        <button class="copy-btn" style="margin:0;padding:10px 6px;font-size:12px" onclick="copyListing('${id}')">Copy</button>
+        <button onclick="deleteCard('${id}')" style="padding:10px 6px;border-radius:8px;border:1px solid rgba(224,92,92,.2);background:rgba(224,92,92,.06);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif">Delete</button>
       </div>
     </div>`;
 
   document.getElementById('detailScroll').innerHTML=`
-    <div style="display:none" class="desktop-back-btn">
-      <button onclick="goBack()" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:13px;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:16px">← Back</button>
-    </div>
     ${imgGallery}
     ${soldBanner}
     ${hotBox}
@@ -2162,15 +2160,31 @@ function openDetail(id){
             <button onclick="editCost('${id}')" style="font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);cursor:pointer;font-family:'Sora',sans-serif">${c.costBasis!=null?'Edit':'Add'}</button>
           </div>
         </div>
-        ${c.priceMid||c.priceMin?`<div class="field"><span class="field-key">Est. sell value</span><span class="field-val" style="color:var(--green)">$${c.priceMid||c.priceMin||0}</span></div>`:''}
+        <div class="field">
+          <span class="field-key">Est. sell value</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input
+              id="priceDisplay_${id}"
+              type="number"
+              value="${c.priceMid||c.priceMin||''}"
+              placeholder="—"
+              style="width:70px;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--green);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0;transition:border-color .15s;font-weight:600"
+              onfocus="this.style.borderBottomColor='var(--gold)'"
+              onblur="this.style.borderBottomColor='transparent';saveManualPrice('${id}',this.value)"
+              onkeydown="if(event.key==='Enter')this.blur()"
+            >
+            ${c.priceMin&&c.priceMax?`<span style="font-size:10px;color:var(--text3)">$${c.priceMin}–$${c.priceMax}</span>`:''}
+            <button onclick="refreshPrice('${id}','ai')" style="font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);cursor:pointer;font-family:'Sora',sans-serif" title="Estimate from AI training data">✦ AI</button>
+            <button onclick="refreshPrice('${id}','web')" style="font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid rgba(77,166,255,.3);background:rgba(77,166,255,.06);color:var(--blue);cursor:pointer;font-family:'Sora',sans-serif" title="Search live eBay sales">🌐 Live</button>
+          </div>
+        </div>
         ${c.costBasis!=null&&(c.priceMid||c.priceMin)?`<div class="field"><span class="field-key">Unrealized gain</span><span class="field-val" style="color:${unrealized>=0?'var(--green)':'var(--red)'}">${unrealized>=0?'+':''}$${unrealized.toFixed(2)}</span></div>`:''}
       </div>
     </div>
 
     ${listingSection}
 
-    ${c.sold?`<button class="copy-btn" onclick="copyListing('${id}')">Copy listing</button>`:''}
-    <div style="height:24px"></div>`;
+    <div style="height:16px"></div>`;
 
   prevView=currentView;
   showView('detail');
@@ -2411,6 +2425,75 @@ async function saveEditCard(){
   closeEditModal();
   showToast('✓ Card updated');
   openDetail(editCardId);
+}
+
+function saveManualPrice(id, value){
+  const idx = cards.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const v = parseFloat(value);
+  if(isNaN(v)||v<0) return;
+  cards[idx].priceMid = v;
+  if(!cards[idx].priceMin) cards[idx].priceMin = v;
+  if(!cards[idx].priceMax) cards[idx].priceMax = v;
+  save();
+  updateStats();
+  // Re-render to update unrealized gain
+  openDetail(id);
+}
+
+async function refreshPrice(id, mode){
+  const c = cards.find(x=>x.id===id);
+  if(!c) return;
+  const key = getApiKey();
+  if(!key){ showToast('Add your Anthropic API key in Settings → AI'); return; }
+
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  const cardDesc = [c.year, c.brand, c.set, c.parallel, c.player, c.numbered, c.grade, c.condition]
+    .filter(Boolean).join(' ');
+
+  const tools = mode === 'web' ? [{type:'web_search_20250305', name:'web_search'}] : [];
+
+  const prompt = mode === 'web'
+    ? `Search eBay sold listings for this sports card and give me the current market value: "${cardDesc}". Find recent sold comps and return ONLY a JSON object: {"priceMin":integer,"priceMax":integer,"priceMid":integer,"source":"eBay sold comps","note":"brief explanation"}`
+    : `What is the estimated market value of this sports card: "${cardDesc}"? Return ONLY a JSON object: {"priceMin":integer,"priceMax":integer,"priceMid":integer,"source":"AI estimate","note":"brief explanation"}`;
+
+  try{
+    const body = { model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] };
+    if(tools.length) body.tools = tools;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+
+    const idx = cards.findIndex(x=>x.id===id);
+    if(idx>=0){
+      cards[idx].priceMin = parsed.priceMin;
+      cards[idx].priceMax = parsed.priceMax;
+      cards[idx].priceMid = parsed.priceMid;
+      save();
+      // Update display inline
+      const el = document.getElementById('priceDisplay_'+id);
+      if(el) el.textContent = `$${parsed.priceMid}`;
+      showToast(`✓ ${mode==='web'?'Live':'AI'} price: $${parsed.priceMin}–$${parsed.priceMax} · ${parsed.note||''}`);
+      // Re-render to update unrealized gain
+      openDetail(id);
+    }
+  } catch(e){
+    console.error('Price refresh failed:', e);
+    showToast('Could not get price — check API key');
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
 }
 
 function editCost(id){
