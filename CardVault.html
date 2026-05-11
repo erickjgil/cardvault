@@ -3598,7 +3598,7 @@ async function submitEbayListing(){
       <ShippingType>Flat</ShippingType>
       <ShippingServiceOptions>
         <ShippingServicePriority>1</ShippingServicePriority>
-        <ShippingService>${binPrice < 20 ? 'EbayStandardEnvelope' : 'USPSFirstClass'}</ShippingService>
+        <ShippingService>${binPrice < 20 ? 'US_eBayStandardEnvelope' : 'USPSFirstClass'}</ShippingService>
         <ShippingServiceCost>${binPrice < 20 ? '0.74' : shipCost}</ShippingServiceCost>
       </ShippingServiceOptions>
     </ShippingDetails>
