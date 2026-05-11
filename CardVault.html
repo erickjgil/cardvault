@@ -55,8 +55,8 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
 .card-thumb{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;position:relative;transition:border-color .2s,box-shadow .2s}
 .card-thumb:active{transform:scale(.97)}
 .card-thumb.hot-card{border-color:var(--red);box-shadow:0 0 16px var(--red-glow)}
-.card-img-wrap{height:112px;display:flex;align-items:center;justify-content:center;background:var(--surface2);position:relative;overflow:hidden}
-.card-img-wrap img{width:100%;height:100%;object-fit:cover}
+.card-img-wrap{aspect-ratio:5/7;width:100%;display:flex;align-items:center;justify-content:center;background:var(--surface2);position:relative;overflow:hidden}
+.card-img-wrap img{width:100%;height:100%;object-fit:contain}
 .card-img-placeholder{font-size:32px;opacity:.2}
 .parallel-badge{position:absolute;top:6px;right:6px;font-size:9px;font-weight:600;padding:2px 8px;border-radius:50px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.3px}
 .badge-gold{background:rgba(255,200,50,.12);color:#ffc832;border:1px solid rgba(255,200,50,.3)}
@@ -278,8 +278,8 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
 .card-thumb{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;position:relative}
 .card-thumb.hot-card{border-color:var(--orange);box-shadow:0 0 0 2px rgba(255,124,58,.2)}
 .card-thumb.sold-card{opacity:.75}
-.card-img-wrap{height:108px;display:flex;align-items:center;justify-content:center;background:var(--surface3);position:relative;overflow:hidden}
-.card-img-wrap img{width:100%;height:100%;object-fit:cover}
+.card-img-wrap{aspect-ratio:5/7;width:100%;display:flex;align-items:center;justify-content:center;background:var(--surface3);position:relative;overflow:hidden}
+.card-img-wrap img{width:100%;height:100%;object-fit:contain}
 .card-img-placeholder{font-size:32px;opacity:.3}
 .parallel-badge{position:absolute;top:5px;right:5px;font-size:9px;font-weight:600;padding:2px 7px;border-radius:20px;font-family:'DM Mono',monospace;text-transform:uppercase}
 .badge-gold{background:#f5c54230;color:var(--gold);border:1px solid var(--gold2)}
@@ -561,7 +561,7 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
     grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
     gap:16px;
   }
-  .card-img-wrap{ height:140px; }
+  /* card-img-wrap uses aspect-ratio */
 
   /* Hot scroll */
   .hot-scroll{ padding:20px 24px; }
@@ -1859,7 +1859,7 @@ function renderGrid(){
       const sel = lotSelected.has(c.id);
       const check = sel ? `<div class="lot-check">✓</div>` : `<div class="lot-check-empty"></div>`;
       return `<div class="card-thumb lot-selectable${sel?' lot-selected':''}" onclick="toggleLotCard('${c.id}',event)">
-        <div class="card-img-wrap">${img}${badge}${rc}${check}</div>
+        <div class="card-img-wrap">${img}${check}</div>
         <div class="card-info">
           <div class="card-name">${c.ebayTitle||c.player||'Identifying...'}</div>
           <div class="card-meta">${c.player||[c.year,c.brand].filter(Boolean).join(' · ')||''}</div>
@@ -1867,11 +1867,24 @@ function renderGrid(){
       </div>`;
     }
 
+    // Build tag chips for below the title
+    const tags = [
+      c.rookie ? `<span style="background:#e5323820;color:#e53238;border:1px solid #e5323840;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px">RC</span>` : null,
+      c.auto ? `<span style="background:rgba(245,197,66,.15);color:var(--gold);border:1px solid rgba(245,197,66,.3);font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px">Auto</span>` : null,
+      c.relic ? `<span style="background:rgba(77,166,255,.12);color:var(--blue);border:1px solid rgba(77,166,255,.3);font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px">Patch</span>` : null,
+      c.parallel && c.parallel.toLowerCase()!=='base' ? `<span style="background:var(--surface3);color:var(--text2);border:1px solid var(--border2);font-size:9px;padding:2px 6px;border-radius:4px">${c.parallel}</span>` : null,
+      c.numbered ? `<span style="background:var(--surface3);color:var(--text3);border:1px solid var(--border2);font-size:9px;padding:2px 6px;border-radius:4px">${c.numbered}</span>` : null,
+      c.grade ? `<span style="background:rgba(76,175,125,.1);color:var(--green);border:1px solid rgba(76,175,125,.3);font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px">${c.grade}</span>` : null,
+      c.ebayListingId && !c.sold ? `<span style="background:#e5323815;color:#e53238;border:1px solid #e5323830;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px">eBay</span>` : null,
+      c.sold ? `<span style="background:rgba(76,175,125,.1);color:var(--green);border:1px solid rgba(76,175,125,.3);font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px">✓ Sold${c.soldPrice?' $'+c.soldPrice:''}</span>` : null,
+    ].filter(Boolean).join('');
+
     return `<div class="card-thumb${hot&&!c.sold?' hot-card':''}${c.sold?' sold-card':''}" onclick="openDetail('${c.id}')">
-      <div class="card-img-wrap">${img}${badge}${rc}${fire}${soldBadge}${ebayBadge}</div>
+      <div class="card-img-wrap">${img}${fire}</div>
       <div class="card-info">
         <div class="card-name">${c.ebayTitle||c.player||'Identifying...'}</div>
         <div class="card-meta">${c.player||[c.year,c.brand].filter(Boolean).join(' · ')||''}</div>
+        ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">${tags}</div>` : ''}
       </div>
     </div>`;
   }).join('');
