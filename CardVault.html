@@ -2884,9 +2884,68 @@ function saveManualCard(){
 }
 
 function generateEbayTitle(c){
-  const parts = [c.year, c.brand, c.player, c.parallel, c.numbered ? c.numbered : '', c.rookie ? 'RC' : '', c.auto ? 'Auto' : '', c.grade || '', c.team].filter(Boolean);
+  // eBay sports card title best practices:
+  // 1. Player name first — most searched term
+  // 2. Year + Brand/Set — what buyers filter by
+  // 3. Key attributes in priority order: RC, Auto, Patch/Relic, numbered, parallel, grade
+  // 4. Team — only ONE team (primary), not all teams
+  // 5. Stay under 80 chars, no keyword stuffing, no commas, readable
+
+  const parts = [];
+
+  // Player — always first
+  if(c.player) parts.push(c.player);
+
+  // Year
+  if(c.year) parts.push(c.year);
+
+  // Brand (short) — just the manufacturer, not the full set name
+  if(c.brand) parts.push(c.brand);
+
+  // Set name — only if it adds meaningful info beyond brand
+  if(c.set && c.set !== c.brand && c.set !== c.player) {
+    // Use a shortened set name if too long
+    const setShort = c.set.replace(c.brand||'','').trim().replace(/^[-\s]+/,'');
+    if(setShort && setShort.length < 20) parts.push(setShort);
+  }
+
+  // Rookie — use "Rookie RC" which is what collectors search
+  if(c.rookie) parts.push('Rookie RC');
+
+  // Auto — very high value
+  if(c.auto) parts.push('Auto');
+
+  // Relic/Patch
+  if(c.relic) parts.push('Patch');
+
+  // Parallel — e.g. "Gold Prizm", "Silver Holo"
+  if(c.parallel && c.parallel.toLowerCase() !== 'base') parts.push(c.parallel);
+
+  // Numbered — e.g. "/99"
+  if(c.numbered && c.numbered !== c.cardNumber) parts.push(c.numbered);
+
+  // Grade — e.g. "PSA 9"
+  if(c.grade) parts.push(c.grade);
+
+  // Team — only the FIRST/primary team, not all teams
+  // (teams array or comma-separated string)
+  const teamList = Array.isArray(c.teams) && c.teams.length
+    ? c.teams
+    : (c.team ? c.team.split(',').map(t=>t.trim()) : []);
+  const primaryTeam = teamList[0];
+  if(primaryTeam) parts.push(primaryTeam);
+
+  // Build title and enforce 80 char limit cleanly (no mid-word cuts)
   let title = parts.join(' ');
-  if(title.length > 80) title = title.substring(0, 77) + '...';
+  if(title.length > 80){
+    // Remove least important parts from the end until it fits
+    while(parts.length > 2 && title.length > 80){
+      parts.pop();
+      title = parts.join(' ');
+    }
+    if(title.length > 80) title = title.substring(0, 80).trim();
+  }
+
   return title;
 }
 
