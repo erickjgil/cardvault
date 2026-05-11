@@ -452,6 +452,163 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
 .auth-avatar img{width:100%;height:100%;object-fit:cover}
 .auth-email{font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .signout-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:'Sora',sans-serif}
+
+/* ============================================================
+   RESPONSIVE — DESKTOP (768px+)
+   ============================================================ */
+@media(min-width:768px){
+
+  /* Root layout — sidebar nav + main content */
+  body{ overflow:auto; }
+  .app{
+    flex-direction:row;
+    height:100vh;
+    max-width:1400px;
+    margin:0 auto;
+  }
+
+  /* Sidebar nav */
+  .bottom-nav{
+    flex-direction:column;
+    width:200px;
+    flex-shrink:0;
+    border-top:none;
+    border-right:1px solid var(--border);
+    padding:24px 0;
+    padding-bottom:24px;
+    justify-content:flex-start;
+    height:100vh;
+    position:sticky;
+    top:0;
+  }
+  .nav-item{
+    flex-direction:row;
+    justify-content:flex-start;
+    padding:12px 20px;
+    gap:12px;
+    border-radius:10px;
+    margin:2px 10px;
+  }
+  .nav-item.active{background:var(--surface2);}
+  .nav-label{font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;}
+  .nav-icon{font-size:18px;}
+
+  /* Logo in sidebar */
+  .topbar{
+    display:none; /* hide mobile topbar */
+  }
+
+  /* Sidebar logo area */
+  .bottom-nav::before{
+    content:'🃏 CardVault';
+    display:block;
+    font-size:16px;
+    font-weight:700;
+    padding:0 20px 20px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:10px;
+    color:var(--text);
+    letter-spacing:-.3px;
+  }
+
+  /* Show desktop stats in toolbar */
+  .desktop-stats{ display:flex !important; }
+  .desktop-back-btn{ display:block !important; }
+
+  /* Main content area */
+  .main-content{
+    flex:1;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* Toolbar improvements */
+  .toolbar{
+    padding:12px 24px;
+  }
+
+  /* Cards grid — more columns on desktop */
+  .cards-scroll{ padding:20px 24px; }
+  .cards-grid{
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:16px;
+  }
+  .card-img-wrap{ height:140px; }
+
+  /* Hot scroll */
+  .hot-scroll{ padding:20px 24px; }
+  .hot-card-row{ padding:16px 18px; }
+
+  /* Detail view — centered panel with max width */
+  .view#viewDetail{
+    flex-direction:row;
+    overflow:hidden;
+  }
+  .detail-header-bar{ display:none; }
+  #detailScroll{
+    max-width:680px;
+    margin:0 auto;
+    padding:24px;
+    overflow-y:auto;
+    height:100%;
+    width:100%;
+  }
+  .detail-img-wrap{
+    max-width:200px;
+    float:left;
+    margin:0 24px 16px 0;
+    border-radius:var(--radius-lg);
+  }
+
+  /* Settings */
+  .settings-scroll{
+    padding:24px;
+    max-width:680px;
+    margin:0 auto;
+  }
+
+  /* Modals — centered dialog instead of bottom sheet */
+  .modal-overlay{
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .modal-sheet{
+    border-radius:16px;
+    max-width:520px;
+    max-height:88vh;
+    width:100%;
+    padding:28px;
+  }
+  .modal-drag{ display:none; }
+
+  /* Auth screen */
+  .auth-screen{ background:var(--bg); }
+  .auth-form{ max-width:380px; }
+
+  /* Edit modal wider */
+  #editModal .modal-sheet{ max-width:560px; }
+
+  /* List view wider rows */
+  .cards-list{ gap:8px; }
+  .list-row{ padding:12px 16px; }
+  .list-thumb{ width:44px; height:56px; }
+
+  /* Better font sizes on desktop */
+  .card-name{ font-size:13px; }
+  .hot-card-name{ font-size:14px; }
+  .section-label{ font-size:11px; }
+}
+
+/* Wide desktop — two column detail */
+@media(min-width:1100px){
+  .cards-grid{ grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); }
+  .cards-scroll{ padding:24px 32px; }
+  .hot-scroll{ padding:24px 32px; }
+  .settings-scroll{ padding:24px 32px; max-width:800px; }
+  #detailScroll{ max-width:800px; padding:32px; }
+}
 </style>
 </head>
 <body>
@@ -516,6 +673,12 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
           <div class="tab" onclick="filterCards('sold',this)">✓ Sold</div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;align-items:center">
+          <!-- Desktop stats (hidden on mobile via topbar) -->
+          <div class="desktop-stats" style="display:none;gap:16px;margin-right:12px;border-right:1px solid var(--border);padding-right:12px">
+            <div style="text-align:center"><div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--gold)" id="statTotal2">0</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Cards</div></div>
+            <div style="text-align:center"><div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--gold)" id="statValue2">$0</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Value</div></div>
+            <div style="text-align:center"><div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--gold)" id="statSold2">0</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Sold</div></div>
+          </div>
           <!-- Sort dropdown -->
           <select id="sortSelect" onchange="setSortOrder(this.value)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:11px;padding:5px 8px;font-family:'Sora',sans-serif;cursor:pointer">
             <option value="added">Date added</option>
@@ -1580,12 +1743,22 @@ function goBack(){ showView(prevView||'catalog'); }
 
 function updateStats(){
   const unsold = cards.filter(c=>!c.sold);
-  document.getElementById('statTotal').textContent = cards.length;
-  document.getElementById('statValue').textContent = '$' + unsold.reduce((a,c)=>a+(c.priceMid||c.priceMin||0),0).toLocaleString();
-  document.getElementById('statRC').textContent = cards.filter(c=>c.rookie&&!c.sold).length;
-  // Update sold count badge if it exists
-  const soldEl = document.getElementById('statSold');
-  if(soldEl) soldEl.textContent = cards.filter(c=>c.sold).length;
+  const total = cards.length;
+  const value = '$' + unsold.reduce((a,c)=>a+(c.priceMid||c.priceMin||0),0).toLocaleString();
+  const rcs = cards.filter(c=>c.rookie&&!c.sold).length;
+  const sold = cards.filter(c=>c.sold).length;
+
+  // Mobile topbar
+  const el = id => document.getElementById(id);
+  if(el('statTotal')) el('statTotal').textContent = total;
+  if(el('statValue')) el('statValue').textContent = value;
+  if(el('statRC')) el('statRC').textContent = rcs;
+  if(el('statSold')) el('statSold').textContent = sold;
+
+  // Desktop toolbar
+  if(el('statTotal2')) el('statTotal2').textContent = total;
+  if(el('statValue2')) el('statValue2').textContent = value;
+  if(el('statSold2')) el('statSold2').textContent = sold;
 }
 
 function getHotSet(){
@@ -1626,6 +1799,7 @@ function renderGrid(){
     const rc = c.rookie ? '<div class="badge-rc">RC</div>' : '';
     const fire = hot && !lotMode && !c.sold ? '<div class="fire-badge">🔥 HOT</div>' : '';
     const soldBadge = c.sold ? `<div style="position:absolute;bottom:5px;right:5px;background:var(--green);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px">✓ SOLD${c.soldPrice?' $'+c.soldPrice:''}</div>` : '';
+    const ebayBadge = c.ebayListingId && !c.sold ? `<div style="position:absolute;bottom:5px;left:5px;background:#e53238;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px">eBay</div>` : '';
     const imgSrc = c.imgData || c.cloudImgUrl || null;
     const img = imgSrc ? `<img src="${imgSrc}" alt="">` : '<div class="card-img-placeholder">🃏</div>';
     const chips = [c.numbered,c.grade,c.auto?'Auto':null,c.relic?'Relic':null].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('');
@@ -1644,7 +1818,7 @@ function renderGrid(){
     }
 
     return `<div class="card-thumb${hot&&!c.sold?' hot-card':''}${c.sold?' sold-card':''}" onclick="openDetail('${c.id}')">
-      <div class="card-img-wrap">${img}${badge}${rc}${fire}${soldBadge}</div>
+      <div class="card-img-wrap">${img}${badge}${rc}${fire}${soldBadge}${ebayBadge}</div>
       <div class="card-info">
         <div class="card-name">${c.player||'Identifying...'}</div>
         <div class="card-meta">${[c.year,c.brand].filter(Boolean).join(' · ')||c.team||''}</div>
@@ -1695,8 +1869,16 @@ async function analyzeCard(imgData, filename, key){
         model:'claude-sonnet-4-20250514',max_tokens:1000,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:mime,data:base64}},
-          {type:'text',text:`You are a sports card expert. Analyze this card image and return ONLY a valid JSON object, no markdown or explanation:
-{"player":"Full name","team":"Team name","sport":"Baseball|Basketball|Football|Hockey|Soccer","year":"year string","brand":"e.g. Panini Prizm or Topps Chrome","set":"set name","parallel":"e.g. Gold Prizm or Silver or null","numbered":"e.g. /99 or null","rookie":true or false,"auto":true or false,"relic":true or false,"grade":"e.g. PSA 9 or null","condition":"Gem Mint|Near Mint|Good|Fair","priceMin":integer USD,"priceMax":integer USD,"priceMid":integer USD,"ebayTitle":"eBay optimized title under 80 chars","ebayDesc":"2-3 sentence eBay description"}`}
+          {type:'text',text:`You are a sports card expert with sharp eyes for fine print. Analyze this card image carefully and return ONLY a valid JSON object with no markdown or explanation.
+
+Look closely for:
+- The card number (usually on the back bottom corner, e.g. "16" or "123")
+- The insert/parallel set name printed on the card (e.g. "Club Prizm Badge", "Silver Prizm", "Holo")
+- The full brand set name (e.g. "2022-23 Panini Select EPL")
+- Serial numbering stamped on the card (e.g. "/99")
+
+Return this exact JSON:
+{"player":"Full name","team":"Team name","sport":"Baseball|Basketball|Football|Hockey|Soccer","year":"season e.g. 2022-23 or 2024","brand":"manufacturer e.g. Panini","set":"full set name e.g. 2022-23 Panini Select EPL","insertSet":"insert set name e.g. Club Prizm Badge or null","parallel":"parallel name e.g. Gold Prizm or null","numbered":"e.g. /99 or null","cardNumber":"digits only e.g. 16 or null","rookie":true or false,"auto":true or false,"relic":true or false,"grade":"e.g. PSA 9 or null","condition":"Near Mint or Better|Excellent|Very Good|Poor","priceMin":integer USD,"priceMax":integer USD,"priceMid":integer USD,"ebayTitle":"eBay title under 80 chars","ebayDesc":"2-3 sentence description"}`}
         ]}]
       })
     });
@@ -1708,6 +1890,9 @@ async function analyzeCard(imgData, filename, key){
 
     // Compress image before saving
     const compressed = await compressImage(imgData, 200);
+    // Map AI fields to card schema
+    if(info.insertSet && !info.parallel) info.parallel = info.insertSet;
+    if(info.cardNumber) info.numbered = info.numbered || info.cardNumber;
     const card={id:uid(), imgData: compressed || imgData, ...info};
     cards.push(card);
     save(); updateStats(); renderGrid();
@@ -1726,15 +1911,10 @@ function openDetail(id){
   document.getElementById('detailTitle').textContent=c.player||'Card Detail';
   document.getElementById('detailHotIcon').textContent=isHot?'🔥':'';
   const imgSrc = c.imgData || c.cloudImgUrl || null;
-  console.log('openDetail imgSrc:', imgSrc ? imgSrc.substring(0,40)+'...('+imgSrc.length+'chars)' : 'NULL', '| imgData:', !!c.imgData, '| cloudImgUrl:', !!c.cloudImgUrl);
   const img=imgSrc?`<img src="${imgSrc}" alt="">`:'<div class="detail-img-placeholder">🃏</div>';
   const hotBox=isHot&&hotInfo?`<div class="hot-alert-box"><div class="hot-alert-title">🔥 This card is HOT right now</div><div class="hot-alert-body"><strong>${hotInfo.reason}</strong> — ${hotInfo.news}${hotInfo.sellWindow?'<br><br><strong>Sell window:</strong> '+hotInfo.sellWindow:''}</div></div>`:'';
-  const fields=[['Player',c.player],['Team',c.team],['Sport',c.sport],['Year',c.year],['Brand',c.brand],['Set',c.set],['Parallel',c.parallel],['Numbered',c.numbered],['Rookie',c.rookie?'Yes':null],['Auto',c.auto?'Yes':null],['Relic',c.relic?'Yes':null],['Grade',c.grade],['Condition',c.condition]]
-    .filter(([,v])=>v!=null)
-    .map(([k,v])=>`<div class="field"><span class="field-key">${k}</span><span class="field-val">${v}</span></div>`).join('');
-  const priceNote=isHot?` <span style="color:var(--orange);font-size:10px">↑ trending</span>`:'';
 
-  // Cost & profit calculations
+  // Financials
   const costBasis=c.costBasis!=null?`$${c.costBasis}`:'—';
   const profit=c.sold&&c.soldPrice!=null&&c.costBasis!=null?c.soldPrice-c.costBasis:null;
   const profitColor=profit!=null?(profit>=0?'var(--green)':'var(--red)'):'';
@@ -1743,7 +1923,7 @@ function openDetail(id){
 
   // Sold banner
   const soldBanner=c.sold?`
-    <div style="background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+    <div style="background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
       <div>
         <div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:2px">✓ Sold${c.soldDate?' on '+new Date(c.soldDate).toLocaleDateString():''}</div>
         <div style="font-size:12px;color:var(--text2)">Sale price: <span style="color:var(--text);font-weight:600;font-family:'DM Mono',monospace">$${c.soldPrice||0}</span>${profitLabel?' · P&L: <span style="color:'+profitColor+';font-weight:600;font-family:\'DM Mono\',monospace">'+profitLabel+'</span>':''}</div>
@@ -1751,11 +1931,64 @@ function openDetail(id){
       <button onclick="markUnsold('${id}')" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);font-size:11px;cursor:pointer;font-family:'Sora',sans-serif">Undo</button>
     </div>`:'';
 
+  // Card detail chips — compact row format
+  const detailChips = [
+    c.sport, c.year, c.brand, c.team,
+    c.parallel, c.numbered, c.grade,
+    c.rookie?'RC':null, c.auto?'Auto':null, c.relic?'Relic':null
+  ].filter(Boolean).map(v=>`<span class="chip" style="font-size:10px;padding:3px 8px">${v}</span>`).join('');
+
+  // eBay listing section — inline, no modal
+  const priceNote=isHot?` <span style="color:var(--orange);font-size:10px">↑ trending</span>`:'';
+  const isListed = !!c.ebayListingId && !c.sold;
+  const listingSection = c.sold ? '' : `
+    <div class="section">
+      <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
+        <span>List on eBay</span>
+        ${isListed?`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(229,50,56,.1);color:#e53238;border:1px solid rgba(229,50,56,.25);font-weight:600">● Live</span>`:''}
+      </div>
+
+      ${isListed?`
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button onclick="window.open('${c.ebayListingUrl}','_blank')" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(229,50,56,.3);background:rgba(229,50,56,.08);color:#e53238;font-size:12px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif">🔗 View listing</button>
+        <button onclick="checkEbayListingStatus('${id}')" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;font-family:'Sora',sans-serif">⟳ Check status</button>
+      </div>`:''
+      }
+
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--gold);line-height:1.4;margin-bottom:8px">${c.ebayTitle||'—'}</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6;border-top:1px solid var(--border);padding-top:8px">${c.ebayDesc||'—'}</div>
+      </div>
+
+      <div class="price-row" style="margin-bottom:12px">
+        <div><div class="price-label">Suggested price${priceNote}</div><div class="price-range">$${c.priceMin||0}–$${c.priceMax||0} range</div></div>
+        <div class="price-val">$${c.priceMid||c.priceMin||0}</div>
+      </div>
+
+      <button class="list-btn" onclick="openEbayModal('${id}')">
+        <span class="list-btn-icon">🛒</span> ${isListed?'Relist / Update':'List on eBay'}
+      </button>
+      <button onclick="openMarkSold('${id}')" style="width:100%;padding:11px;border-radius:8px;border:1px solid rgba(76,175,125,.3);background:rgba(76,175,125,.08);color:var(--green);font-size:13px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;margin-top:8px;margin-bottom:8px">✓ Mark as Sold</button>
+      <button class="copy-btn" onclick="copyListing('${id}')">Copy title + description</button>
+    </div>`;
+
   document.getElementById('detailScroll').innerHTML=`
+    <div style="display:none" class="desktop-back-btn">
+      <button onclick="goBack()" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:13px;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:16px">← Back</button>
+    </div>
     <div class="detail-img-wrap">${img}</div>
     ${soldBanner}
     ${hotBox}
-    <div class="section"><div class="section-label">Card details</div><div class="fields">${fields}</div></div>
+
+    <div class="section">
+      <div class="section-label">Card details</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${detailChips}</div>
+      <div class="fields">
+        ${[['Player',c.player],['Team',c.team],['Set',c.set],['Parallel',c.parallel],['Card #',c.numbered],['Grade',c.grade],['Condition',c.condition]]
+          .filter(([,v])=>v!=null)
+          .map(([k,v])=>`<div class="field"><span class="field-key">${k}</span><span class="field-val">${v}</span></div>`).join('')}
+      </div>
+    </div>
 
     <div class="section">
       <div class="section-label">Financials</div>
@@ -1763,7 +1996,7 @@ function openDetail(id){
         <div class="field">
           <span class="field-key">Purchase price</span>
           <div style="display:flex;align-items:center;gap:8px">
-            <span class="field-val" id="costDisplay">${costBasis}</span>
+            <span class="field-val">${costBasis}</span>
             <button onclick="editCost('${id}')" style="font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);cursor:pointer;font-family:'Sora',sans-serif">${c.costBasis!=null?'Edit':'Add'}</button>
           </div>
         </div>
@@ -1772,19 +2005,12 @@ function openDetail(id){
       </div>
     </div>
 
-    <div class="section"><div class="section-label">eBay listing</div>
-    <div class="ebay-box">
-      <div class="ebay-title-text">${c.ebayTitle||'—'}</div>
-      <div class="ebay-desc">${c.ebayDesc||'—'}</div>
-      <div class="price-row">
-        <div><div class="price-label">Suggested price${priceNote}</div><div class="price-range">$${c.priceMin||0}–$${c.priceMax||0} range</div></div>
-        <div class="price-val">$${c.priceMid||c.priceMin||0}</div>
-      </div>
-      ${!c.sold?`<button class="list-btn" onclick="openEbayModal('${id}')"><span class="list-btn-icon">🛒</span> List on eBay</button>`:''}
-      ${!c.sold?`<button onclick="openMarkSold('${id}')" style="width:100%;padding:11px;border-radius:8px;border:1px solid rgba(76,175,125,.3);background:rgba(76,175,125,.08);color:var(--green);font-size:13px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:8px">✓ Mark as Sold</button>`:''}
-      <button class="copy-btn" onclick="copyListing('${id}')">Copy title + description</button>
-      <button class="delete-btn" onclick="deleteCard('${id}')">Remove from catalog</button>
-    </div></div>`;
+    ${listingSection}
+
+    ${c.sold?`<button class="copy-btn" onclick="copyListing('${id}')">Copy title + description</button>`:''}
+    <button class="delete-btn" onclick="deleteCard('${id}')">Remove from catalog</button>
+    <div style="height:24px"></div>`;
+
   prevView=currentView;
   showView('detail');
   selectedCardId = id;
@@ -2361,6 +2587,7 @@ function renderListView(list, hotSet){
     const imgSrc = c.imgData || c.cloudImgUrl || null;
     const thumb = imgSrc ? `<img src="${imgSrc}" alt="">` : ({Baseball:'⚾',Basketball:'🏀',Football:'🏈',Hockey:'🏒',Soccer:'⚽'}[c.sport]||'🃏');
     const price = c.sold ? `<span style="color:var(--green);font-size:11px">Sold $${c.soldPrice||0}</span>` : (c.priceMid||c.priceMin ? `<span class="list-price">$${c.priceMid||c.priceMin}</span>` : '');
+    const ebayTag = c.ebayListingId && !c.sold ? `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:#e5323820;color:#e53238;border:1px solid #e5323840;font-weight:700">eBay</span>` : '';
     const chips = [c.parallel,c.numbered,c.grade,c.rookie?'RC':null,c.auto?'Auto':null].filter(Boolean).slice(0,3).map(x=>`<span class="chip">${x}</span>`).join('');
     return `<div class="list-row${hot&&!c.sold?' hot-card':''}${c.sold?' sold-card':''}" onclick="openDetail('${c.id}')">
       <div class="list-thumb">${thumb}</div>
@@ -2371,6 +2598,7 @@ function renderListView(list, hotSet){
       <div class="list-right">
         ${price}
         <div class="list-chips">${chips}</div>
+        ${ebayTag}
         ${hot&&!c.sold?'<span style="font-size:9px;color:var(--orange)">🔥</span>':''}
       </div>
     </div>`;
@@ -2674,8 +2902,9 @@ function getEbayToken(){ return localStorage.getItem('cv_ebay_token') || ''; }
 function getEbayAppId(){ return localStorage.getItem('cv_ebay_appid') || ''; }
 function getEbayCertId(){ return localStorage.getItem('cv_ebay_certid') || ''; }
 function getEbayRuName(){ return localStorage.getItem('cv_ebay_runame') || ''; }
-function getSellerZip(){ return localStorage.getItem('cv_zip') || '10001'; }
-function getShippingSingle(){ return parseFloat(localStorage.getItem('cv_ship_single') || '4.99'); }
+function getSellerZip(){ return localStorage.getItem('cv_zip') || '21102'; }
+function getShippingSingle(){ return parseFloat(localStorage.getItem('cv_ship_single') || '0.74'); }
+function getShippingLot(){ return parseFloat(localStorage.getItem('cv_ship_lot') || '4.99'); }
 function getShippingLot(){ return parseFloat(localStorage.getItem('cv_ship_lot') || '5.99'); }
 function isEbayConnected(){ return !!getEbayToken() && !!getEbayAppId(); }
 let ebayListingState = { type: localStorage.getItem('cv_default_type')||'auction', duration: parseInt(localStorage.getItem('cv_default_duration')||'5'), condition: '', price: '', startPrice: '', cardId: null };
@@ -3055,12 +3284,15 @@ function renderEbayModalContent(c){
   const connWarning = !connected ? `<div style="background:rgba(255,124,58,.1);border:1px solid rgba(255,124,58,.3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--orange)">⚠ eBay not connected — go to Settings. You can still preview.</div>` : '';
 
   const conditionOptions = [
-    {key:'near_mint', label:'Near Mint or Better', sub:'Fresh from pack'},
-    {key:'excellent', label:'Excellent', sub:'Light wear'},
-    {key:'very_good', label:'Very Good', sub:'Moderate wear'},
-    {key:'poor', label:'Poor', sub:'Heavy wear'},
-    {key:'graded', label:'Graded', sub:'PSA/BGS/SGC slab'},
-  ].map(o=>`<div class="condition-btn${s.condition===o.key?' selected':''}" onclick="setModalCondition('${o.key}',this)" style="font-size:11px;padding:8px 6px">${o.label}<br><span style="font-size:9px;opacity:.6">${o.sub}</span></div>`).join('');
+    {key:'near_mint', label:'Near Mint or Better', sub:'Ungraded — sharp corners, no creases'},
+    {key:'excellent', label:'Excellent',            sub:'Ungraded — light wear, rough edges'},
+    {key:'very_good', label:'Very Good',            sub:'Ungraded — moderate wear, creases'},
+    {key:'poor',      label:'Poor',                 sub:'Ungraded — heavy wear, stains'},
+    {key:'graded',    label:'Graded',               sub:'PSA / BGS / SGC professionally graded'},
+  ].map(o=>`<div class="condition-btn${s.condition===o.key?' selected':''}" onclick="setModalCondition('${o.key}',this)" style="font-size:11px;padding:8px 6px;text-align:left">
+    <div style="font-weight:600;color:${o.key==='graded'?'var(--gold)':'var(--text)'}">${o.label}</div>
+    <div style="font-size:9px;opacity:.6;margin-top:2px">${o.sub}</div>
+  </div>`).join('');
 
   const durations = s.type === 'auction'
     ? [3,5,7,10].map(d=>`<div class="duration-btn${s.duration===d?' selected':''}" onclick="setModalDuration(${d},this)">${d}d</div>`).join('')
@@ -3297,16 +3529,19 @@ async function submitEbayListing(){
     </ConditionDescriptors>`;
   const sp = (name, value) => value ? `<NameValueList><Name>${name}</Name><Value>${escXml(String(value))}</Value></NameValueList>` : '';
   const sportLeagueMap = {Baseball:'MLB',Basketball:'NBA',Football:'NFL',Hockey:'NHL',Soccer:'MLS'};
+  const ebaySpor = c.sport === 'Soccer' ? 'Football' : c.sport;
   const features = [c.rookie?'Rookie':null, c.auto?'Autograph':null, c.relic?'Memorabilia/Relic':null, c.numbered?'Serial Numbered':null].filter(Boolean).join('|') || 'Basic';
   const gradingService = c.grade ? (c.grade.includes('PSA')?'PSA':c.grade.includes('BGS')||c.grade.includes('Beckett')?'BGS':c.grade.includes('SGC')?'SGC':null) : null;
   const itemSpecificsXml = `<ItemSpecifics>
       ${sp('Player/Athlete', c.player)}
       ${sp('Manufacturer', c.brand || 'Unknown')}
       ${sp('Season', c.year)}
+      ${sp('Year Manufactured', c.year)}
       ${sp('Set', c.set || c.brand || 'Base Set')}
+      ${sp('Insert Set', c.parallel || c.set || '')}
       ${sp('Card Name', c.player)}
       ${sp('Team', c.team)}
-      ${sp('Sport', c.sport)}
+      ${sp('Sport', ebaySpor)}
       ${sp('League', sportLeagueMap[c.sport] || c.sport)}
       ${sp('Type', 'Sports Trading Card')}
       ${sp('Parallel/Variety', c.parallel || 'Base')}
@@ -3316,6 +3551,11 @@ async function submitEbayListing(){
       ${sp('Grade', c.grade)}
       ${sp('Grading Service', gradingService)}
       ${sp('Condition', condInfo.name)}
+      ${sp('Card Size', 'Standard')}
+      ${sp('Card Thickness', '20 Pt.')}
+      ${sp('Vintage', 'No')}
+      ${sp('Original/Licensed Reprint', 'Original')}
+      ${sp('Country of Origin', 'United States')}
     </ItemSpecifics>`;
 
   const descBody = `${c.ebayDesc||'Sports card in good condition.'}\n\n${[c.auto?'✓ Autographed':null, c.relic?'✓ Relic/Patch':null, c.rookie?'✓ Rookie Card':null, c.numbered?'✓ Numbered '+c.numbered:null].filter(Boolean).join('\n')}\nCondition: ${condInfo.name}`;
@@ -3358,8 +3598,8 @@ async function submitEbayListing(){
       <ShippingType>Flat</ShippingType>
       <ShippingServiceOptions>
         <ShippingServicePriority>1</ShippingServicePriority>
-        <ShippingService>USPSFirstClass</ShippingService>
-        <ShippingServiceCost>${shipCost}</ShippingServiceCost>
+        <ShippingService>${binPrice < 20 ? 'EbayStandardEnvelope' : 'USPSFirstClass'}</ShippingService>
+        <ShippingServiceCost>${binPrice < 20 ? '0.74' : shipCost}</ShippingServiceCost>
       </ShippingServiceOptions>
     </ShippingDetails>
     <Site>US</Site>
@@ -3389,6 +3629,39 @@ async function submitEbayListing(){
     showToast(' ' + (err.message||'Listing failed'));
     console.error(err);
   }
+}
+
+
+async function checkEbayListingStatus(id){
+  const c = cards.find(x=>x.id===id);
+  if(!c || !c.ebayListingId) return;
+  if(!isEbayConnected()){ showToast('Connect eBay in Settings first'); return; }
+  showToast('Checking eBay listing...');
+  const token = getEbayToken();
+  const xml = `<?xml version="1.0" encoding="utf-8"?><GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents"><RequesterCredentials><eBayAuthToken>${token}</eBayAuthToken></RequesterCredentials><ItemID>${c.ebayListingId}</ItemID><DetailLevel>ReturnAll</DetailLevel></GetItemRequest>`;
+  try{
+    const text = await ebayApiCall('GetItem', xml);
+    const statusMatch = text.match(/<ListingStatus>(.*?)<\/ListingStatus>/);
+    const status = statusMatch ? statusMatch[1] : null;
+    console.log('eBay listing status:', status, text.substring(0,200));
+    if(!status || text.includes('Invalid item') || text.includes('17')){
+      if(confirm('Listing not found on eBay. Remove the eBay badge?')){
+        const idx = cards.findIndex(x=>x.id===id);
+        if(idx>=0){ delete cards[idx].ebayListingId; delete cards[idx].ebayListingUrl; delete cards[idx].listedAt; save(); renderGrid(); }
+        showToast('\u2713 eBay badge removed'); openDetail(id);
+      }
+    } else if(status === 'Active'){
+      showToast('\u2713 Listing is live on eBay');
+      if(c.ebayListingUrl) window.open(c.ebayListingUrl, '_blank');
+    } else if(status === 'Completed' || status === 'Ended'){
+      if(confirm('Listing has ended on eBay. Mark as sold?')){ openMarkSold(id); }
+      else {
+        const idx = cards.findIndex(x=>x.id===id);
+        if(idx>=0){ delete cards[idx].ebayListingId; delete cards[idx].ebayListingUrl; delete cards[idx].listedAt; save(); renderGrid(); }
+        showToast('\u2713 eBay badge removed'); openDetail(id);
+      }
+    } else { showToast('Listing status: ' + status); }
+  } catch(e){ console.warn('eBay status check failed', e); showToast('Could not check listing status'); }
 }
 
 function showListingSuccess(itemId, url, player){
