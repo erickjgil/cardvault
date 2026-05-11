@@ -464,35 +464,52 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
 .settings-panel-title{font-size:16px;font-weight:700;margin-bottom:16px;letter-spacing:-.3px}
 @keyframes fadeIn{from{opacity:0;transform:translateX(4px)}to{opacity:1;transform:translateX(0)}}
 
+  .add-card-label{ display:none; }
+
 /* ============================================================
    RESPONSIVE — DESKTOP (768px+)
    ============================================================ */
 @media(min-width:768px){
 
-  /* Root layout — sidebar nav + main content */
+  /* Root layout — full-width topbar + (sidebar | content) */
   body{ overflow:auto; }
   .app{
-    flex-direction:row;
+    flex-direction:column;
     height:100vh;
     max-width:1400px;
     margin:0 auto;
   }
 
+  /* Topbar always spans full width */
+  .topbar{
+    display:flex !important;
+    flex-shrink:0;
+    border-bottom:1px solid var(--border);
+    z-index:10;
+    width:100%;
+  }
+
+  /* Row below topbar: sidebar + main content */
+  .app-body{
+    display:flex;
+    flex:1;
+    overflow:hidden;
+  }
+
   /* Sidebar nav — compact, top-aligned */
   .bottom-nav{
-    order: -1; /* force it before main-content in the flex row */
+    order: -1;
     flex-direction:column;
     justify-content:flex-start;
     align-items:stretch;
     width:180px;
     flex-shrink:0;
-    height:100vh;
-    position:sticky;
-    top:0;
+    height:100%;
     border-top:none;
     border-right:1px solid var(--border);
-    padding:16px 0 24px;
+    padding:12px 0 24px;
     overflow-y:auto;
+    position:static;
   }
   .nav-item{
     flex-direction:row;
@@ -510,21 +527,10 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
   .nav-label{ font-size:13px; text-transform:none; letter-spacing:0; font-weight:500; }
   .nav-icon, .nav-icon i{ font-size:18px; }
 
-  /* Logo in sidebar */
-  .topbar{ display:none; }
+  /* Remove sidebar logo — topbar handles branding now */
+  .bottom-nav::before{ display:none; }
 
-  /* Sidebar logo area */
-  .bottom-nav::before{
-    content:'CardVault';
-    display:block;
-    font-size:15px;
-    font-weight:700;
-    padding:4px 20px 16px;
-    border-bottom:1px solid var(--border);
-    margin-bottom:8px;
-    color:var(--text);
-    letter-spacing:-.3px;
-  }
+  .add-card-label{ display:inline; }
 
   /* Show desktop stats in toolbar */
   .desktop-stats{ display:flex !important; }
@@ -664,13 +670,17 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
         <div class="logo-sub">AI catalog</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px">
       <div class="stats-bar">
         <div class="stat-item"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Cards</div></div>
         <div class="stat-item"><div class="stat-num" id="statValue">$0</div><div class="stat-lbl">Value</div></div>
         <div class="stat-item"><div class="stat-num" id="statRC">0</div><div class="stat-lbl">RCs</div></div>
         <div class="stat-item"><div class="stat-num" id="statSold">0</div><div class="stat-lbl">Sold</div></div>
       </div>
+      <button onclick="openAddModal()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;background:var(--gold);color:#111;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:'Sora',sans-serif;flex-shrink:0">
+        <i class="ti ti-plus" style="font-size:16px"></i>
+        <span class="add-card-label">Add Card</span>
+      </button>
       <div class="auth-user-bar" id="userBar" style="display:none">
         <div class="auth-avatar" id="userAvatar">?</div>
         <button class="signout-btn" onclick="signOut()">Sign out</button>
@@ -678,16 +688,10 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
     </div>
   </div>
 
+  <div class="app-body">
   <div class="bottom-nav">
     <div class="nav-item active" id="navCatalog" onclick="showView('catalog')">
       <div class="nav-icon"><i class="ti ti-cards"></i></div><div class="nav-label">Catalog</div>
-    </div>
-    <div class="nav-item fire-nav" id="navHot" onclick="showView('hot')">
-      <div class="nav-icon"><i class="ti ti-flame"></i></div><div class="nav-label">Hot</div>
-      <div class="nav-dot" id="hotDot"></div>
-    </div>
-    <div class="nav-item" onclick="openAddModal()">
-      <div class="nav-icon"><i class="ti ti-camera-plus"></i></div><div class="nav-label">Add Card</div>
     </div>
     <div class="nav-item" id="navSettings" onclick="showView('settings')">
       <div class="nav-icon"><i class="ti ti-settings"></i></div><div class="nav-label">Settings</div>
@@ -955,6 +959,7 @@ alter table cards enable row level security; create policy "public access" on ca
     </div>
 
   </div><!-- end main-content -->
+  </div><!-- end app-body -->
 
 </div><!-- end app -->
 
