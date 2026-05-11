@@ -2903,9 +2903,8 @@ function getEbayAppId(){ return localStorage.getItem('cv_ebay_appid') || ''; }
 function getEbayCertId(){ return localStorage.getItem('cv_ebay_certid') || ''; }
 function getEbayRuName(){ return localStorage.getItem('cv_ebay_runame') || ''; }
 function getSellerZip(){ return localStorage.getItem('cv_zip') || '21102'; }
-function getShippingSingle(){ return parseFloat(localStorage.getItem('cv_ship_single') || '0.74'); }
-function getShippingLot(){ return parseFloat(localStorage.getItem('cv_ship_lot') || '4.99'); }
-function getShippingLot(){ return parseFloat(localStorage.getItem('cv_ship_lot') || '5.99'); }
+function getShippingSingle(){ return parseFloat(localStorage.getItem('cv_ship_single') || '4.99'); }
+function getShippingLot(){ return parseFloat(localStorage.getItem('cv_ship_lot') || '9.99'); }
 function isEbayConnected(){ return !!getEbayToken() && !!getEbayAppId(); }
 let ebayListingState = { type: localStorage.getItem('cv_default_type')||'auction', duration: parseInt(localStorage.getItem('cv_default_duration')||'5'), condition: '', price: '', startPrice: '', cardId: null };
 
@@ -3299,8 +3298,13 @@ function renderEbayModalContent(c){
     : `<div class="duration-btn selected" style="grid-column:1/-1;cursor:default;font-size:11px">Good 'Til Cancelled</div>`;
 
   const priceSection = s.type === 'auction'
-    ? `<div class="form-row"><div><label class="form-label">Starting bid</label><input class="form-input" type="number" id="modalStartPrice" value="${s.startPrice}" min="0.99" step="0.01"></div><div><label class="form-label">BIN (optional)</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01"></div></div>`
-    : `<label class="form-label">Buy It Now price</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01">`;
+    ? `<div class="form-row"><div><label class="form-label">Starting bid</label><input class="form-input" type="number" id="modalStartPrice" value="${s.startPrice}" min="0.99" step="0.01" oninput="updateShippingPreview()"></div><div><label class="form-label">BIN (optional)</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01" oninput="updateShippingPreview()"></div></div>`
+    : `<label class="form-label">Buy It Now price</label><input class="form-input" type="number" id="modalBinPrice" value="${s.price}" min="0.99" step="0.01" oninput="updateShippingPreview()">`;
+
+  const price = parseFloat(s.price) || 0;
+  const shipMethod = price > 0 && price < 20 ? 'eBay Standard Envelope' : 'USPS First Class';
+  const shipCost = price > 0 && price < 20 ? '$0.74' : `$${getShippingSingle().toFixed(2)}`;
+  const shipColor = price > 0 && price < 20 ? 'var(--green)' : 'var(--text2)';
 
   // Required fields review — highlight missing ones
   const reqField = (label, value, fieldId, placeholder) => {
@@ -3337,6 +3341,13 @@ function renderEbayModalContent(c){
         <div class="listing-type-btn${s.type==='bin'?' selected':''}" onclick="setModalType('bin')"><div class="type-icon">💰</div><div class="type-label">Buy It Now</div></div>
       </div>
       ${priceSection}
+      <div id="shippingPreview" style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:9px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text2)">📦 Shipping</div>
+          <div id="shipMethodLabel" style="font-size:12px;font-weight:600;color:${shipColor};margin-top:1px">${shipMethod}</div>
+        </div>
+        <div id="shipCostLabel" style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:${shipColor}">${shipCost}</div>
+      </div>
       <label class="form-label" style="margin-top:10px">Duration</label>
       <div class="duration-grid">${durations}</div>
       <label class="form-label" style="margin-top:10px">Condition</label>
@@ -3352,6 +3363,20 @@ function renderEbayModalContent(c){
       <span class="list-btn-icon">🛒</span> ${connected ? 'Post to eBay' : 'Copy listing (eBay not connected)'}
     </button>
     <button class="cancel-btn" onclick="closeEbayModal()">Cancel</button>`;
+}
+
+function updateShippingPreview(){
+  const binEl = document.getElementById('modalBinPrice');
+  const startEl = document.getElementById('modalStartPrice');
+  const price = parseFloat(binEl?.value || startEl?.value) || 0;
+  const isEnvelope = price > 0 && price < 20;
+  const method = isEnvelope ? 'eBay Standard Envelope' : 'USPS First Class';
+  const cost = isEnvelope ? '$0.74' : `$${getShippingSingle().toFixed(2)}`;
+  const color = isEnvelope ? 'var(--green)' : 'var(--text2)';
+  const methodEl = document.getElementById('shipMethodLabel');
+  const costEl = document.getElementById('shipCostLabel');
+  if(methodEl){ methodEl.textContent = method; methodEl.style.color = color; }
+  if(costEl){ costEl.textContent = cost; costEl.style.color = color; }
 }
 
 function setModalType(type){
@@ -3599,7 +3624,7 @@ async function submitEbayListing(){
       <ShippingServiceOptions>
         <ShippingServicePriority>1</ShippingServicePriority>
         <ShippingService>${binPrice < 20 ? 'US_eBayStandardEnvelope' : 'USPSFirstClass'}</ShippingService>
-        <ShippingServiceCost>${binPrice < 20 ? '0.74' : shipCost}</ShippingServiceCost>
+        <ShippingServiceCost>${binPrice < 20 ? '0.74' : parseFloat(shipCost).toFixed(2)}</ShippingServiceCost>
       </ShippingServiceOptions>
     </ShippingDetails>
     <Site>US</Site>
@@ -3607,6 +3632,8 @@ async function submitEbayListing(){
 </AddItemRequest>`;
 
   console.log('eBay ConditionID being sent:', condInfo.id, '| key:', s.condition, '| category:', catId);
+  console.log('Shipping — binPrice:', binPrice, '| shipCost:', shipCost, '| zip:', zip);
+  console.log('ShippingService:', binPrice < 20 ? 'US_eBayStandardEnvelope' : 'USPSFirstClass');
   try{
     const text = await ebayApiCall('AddItem', xml);
     console.log('eBay AddItem response:', text.substring(0, 800));
