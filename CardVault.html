@@ -2115,8 +2115,11 @@ function openDetail(id){
   document.getElementById('detailScroll').innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
       <button onclick="goBack()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;font-family:'Sora',sans-serif;flex-shrink:0;white-space:nowrap">← Back</button>
-      <span style="font-size:15px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.player||'Card'}</span>
-      <span id="detailHotIcon" style="font-size:16px;flex-shrink:0">${isHot?'🔥':''}</span>
+      <div style="flex:1;overflow:hidden">
+        <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.player||'Card'}</div>
+        <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px" id="detailEbayTitlePreview">${c.ebayTitle||''}</div>
+      </div>
+      <span style="font-size:16px;flex-shrink:0">${isHot?'🔥':''}</span>
       <button onclick="deleteCard('${id}')" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(224,92,92,.2);background:transparent;color:var(--red);font-size:15px;cursor:pointer;flex-shrink:0;line-height:1" title="Remove from catalog"><i class="ti ti-trash"></i></button>
     </div>
     ${imgGallery}
@@ -2233,13 +2236,15 @@ function saveDetailField(id, field, value){
   const idx = cards.findIndex(x=>x.id===id);
   if(idx<0) return;
   cards[idx][field] = value || null;
-  // Regenerate eBay title when key fields change
   if(['player','year','brand','parallel','numbered','rookie','auto','grade','team'].includes(field)){
     const c = cards[idx];
     cards[idx].ebayTitle = generateEbayTitle({
       player:c.player, year:c.year, brand:c.brand, parallel:c.parallel,
       numbered:c.numbered, rookie:c.rookie, auto:c.auto, grade:c.grade, team:c.team
     });
+    // Update header preview live
+    const preview = document.getElementById('detailEbayTitlePreview');
+    if(preview) preview.textContent = cards[idx].ebayTitle || '';
   }
   save();
 }
