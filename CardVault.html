@@ -743,6 +743,7 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
         <h2 id="detailTitle">Card Detail</h2>
         <span id="detailHotIcon" style="font-size:16px"></span>
         <button onclick="openEditModal(selectedCardId)" style="padding:5px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:'Sora',sans-serif;flex-shrink:0">✏️ Edit</button>
+        <button onclick="deleteCard(selectedCardId)" style="padding:5px 10px;border-radius:8px;border:1px solid rgba(224,92,92,.25);background:transparent;color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0;line-height:1" title="Remove from catalog">🗑</button>
       </div>
       <div class="detail-scroll" id="detailScroll"></div>
     </div>
@@ -1916,18 +1917,23 @@ function openDetail(id){
   // Image gallery — single image or scrollable row
   const imgGallery = allImgs.length > 1
     ? `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
-        ${allImgs.map((src,i) => `<div style="flex-shrink:0;width:${i===0?'180px':'120px'};aspect-ratio:3/4;border-radius:10px;overflow:hidden;border:${i===0?'2px solid var(--gold)':'1px solid var(--border)'};background:var(--surface2)">
+        ${allImgs.map((src,i) => `<div style="flex-shrink:0;width:${i===0?'180px':'120px'};aspect-ratio:3/4;border-radius:10px;overflow:hidden;border:${i===0?'2px solid var(--gold)':'1px solid var(--border)'};background:var(--surface2);position:relative">
           <img src="${src}" style="width:100%;height:100%;object-fit:cover">
+          <button onclick="deleteCardImage('${id}',${i})" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+          ${i===0?'<div style="position:absolute;bottom:4px;left:4px;font-size:9px;background:rgba(0,0,0,.5);color:var(--gold);padding:2px 6px;border-radius:4px;font-weight:600">PRIMARY</div>':''}
         </div>`).join('')}
         <div style="flex-shrink:0;width:80px;aspect-ratio:3/4;border-radius:10px;border:1.5px dashed var(--border2);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:11px;gap:4px" onclick="addMorePhotos('${id}')">
           <span style="font-size:20px">+</span>Add photo
         </div>
       </div>`
     : `<div style="display:flex;gap:8px;margin-bottom:14px;align-items:flex-start">
-        <div class="detail-img-wrap" style="margin:0;flex-shrink:0">${imgSrc?`<img src="${imgSrc}" alt="">`:'<div class="detail-img-placeholder">🃏</div>'}</div>
+        <div style="position:relative;flex-shrink:0">
+          <div class="detail-img-wrap" style="margin:0">${imgSrc?`<img src="${imgSrc}" alt="">`:'<div class="detail-img-placeholder">🃏</div>'}</div>
+          ${imgSrc?`<button onclick="deleteCardImage('${id}',0)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>`:''}
+        </div>
         <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px">
           <button onclick="addMorePhotos('${id}')" style="padding:8px 12px;border-radius:8px;border:1.5px dashed var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;font-family:'Sora',sans-serif;white-space:nowrap">+ Add photo</button>
-          ${imgSrc?`<div style="font-size:10px;color:var(--text3);text-align:center">Tap to add<br>back/side views</div>`:''}
+          ${imgSrc?`<div style="font-size:10px;color:var(--text3);text-align:center">Add back/<br>side views</div>`:''}
         </div>
       </div>`;
   const hotBox=isHot&&hotInfo?`<div class="hot-alert-box"><div class="hot-alert-title">🔥 This card is HOT right now</div><div class="hot-alert-body"><strong>${hotInfo.reason}</strong> — ${hotInfo.news}${hotInfo.sellWindow?'<br><br><strong>Sell window:</strong> '+hotInfo.sellWindow:''}</div></div>`:'';
@@ -2051,8 +2057,10 @@ function openDetail(id){
       <button class="list-btn" onclick="openEbayModal('${id}')">
         <span class="list-btn-icon">🛒</span> ${isListed?'Relist / Update':'List on eBay'}
       </button>
-      <button onclick="openMarkSold('${id}')" style="width:100%;padding:11px;border-radius:8px;border:1px solid rgba(76,175,125,.3);background:rgba(76,175,125,.08);color:var(--green);font-size:13px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;margin-top:8px;margin-bottom:8px">✓ Mark as Sold</button>
-      <button class="copy-btn" onclick="copyListing('${id}')">Copy title + description</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;margin-bottom:8px">
+        <button onclick="openMarkSold('${id}')" style="padding:11px;border-radius:8px;border:1px solid rgba(76,175,125,.3);background:rgba(76,175,125,.08);color:var(--green);font-size:13px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif">✓ Sold</button>
+        <button class="copy-btn" style="margin:0" onclick="copyListing('${id}')">Copy listing</button>
+      </div>
     </div>`;
 
   document.getElementById('detailScroll').innerHTML=`
@@ -2105,8 +2113,7 @@ function openDetail(id){
 
     ${listingSection}
 
-    ${c.sold?`<button class="copy-btn" onclick="copyListing('${id}')">Copy title + description</button>`:''}
-    <button class="delete-btn" onclick="deleteCard('${id}')">Remove from catalog</button>
+    ${c.sold?`<button class="copy-btn" onclick="copyListing('${id}')">Copy listing</button>`:''}
     <div style="height:24px"></div>`;
 
   prevView=currentView;
@@ -2179,6 +2186,20 @@ function toggleDetailField(id, field, el){
     span.style.color = cards[idx][field] ? 'var(--green)' : 'var(--text3)';
   }
   save();
+}
+
+function deleteCardImage(id, index){
+  const idx = cards.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const allImgs = cards[idx].imgDataAll || (cards[idx].imgData ? [cards[idx].imgData] : []);
+  if(allImgs.length === 0) return;
+  if(!confirm(allImgs.length === 1 ? 'Remove the only photo from this card?' : `Remove photo ${index+1}?`)) return;
+  allImgs.splice(index, 1);
+  cards[idx].imgDataAll = allImgs.length > 0 ? allImgs : null;
+  cards[idx].imgData = allImgs.length > 0 ? allImgs[0] : null;
+  save();
+  showToast('✓ Photo removed');
+  openDetail(id);
 }
 
 function addMorePhotos(id){
