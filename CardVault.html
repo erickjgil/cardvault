@@ -1958,8 +1958,7 @@ function openDetail(id){
   const hotSet=getHotSet();
   const isHot=hotSet.has((c.player||'').toLowerCase());
   const hotInfo=hotData&&hotData.cards?hotData.cards.find(x=>(x.player||'').toLowerCase()===(c.player||'').toLowerCase()):null;
-  document.getElementById('detailTitle').textContent=c.player||'Card Detail';
-  document.getElementById('detailHotIcon').textContent=isHot?'🔥':'';
+  // title and hot icon are now rendered inline in detailScroll
   const imgSrc = c.imgData || c.cloudImgUrl || null;
   const allImgs = c.imgDataAll || (imgSrc ? [imgSrc] : []);
 
