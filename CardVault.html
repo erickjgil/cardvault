@@ -1950,6 +1950,44 @@ function openDetail(id){
     </div>`:'';
 
   // Inline editable field helper
+  // Team multi-select helper — supports multiple teams like eBay
+  const SPORT_TEAMS = {
+    Baseball: ['Angels','Astros','Athletics','Blue Jays','Braves','Brewers','Cardinals','Cubs','Diamondbacks','Dodgers','Giants','Guardians','Mariners','Marlins','Mets','Nationals','Orioles','Padres','Phillies','Pirates','Rangers','Rays','Red Sox','Reds','Rockies','Royals','Tigers','Twins','White Sox','Yankees'],
+    Basketball: ['76ers','Bucks','Bulls','Cavaliers','Celtics','Clippers','Grizzlies','Hawks','Heat','Hornets','Jazz','Kings','Knicks','Lakers','Magic','Mavericks','Nets','Nuggets','Pacers','Pelicans','Pistons','Raptors','Rockets','Spurs','Suns','Thunder','Timberwolves','Trail Blazers','Warriors','Wizards'],
+    Football: ['49ers','Bears','Bengals','Bills','Broncos','Browns','Buccaneers','Cardinals','Chargers','Chiefs','Colts','Cowboys','Dolphins','Eagles','Falcons','Giants','Jaguars','Jets','Lions','Packers','Panthers','Patriots','Raiders','Rams','Ravens','Saints','Seahawks','Steelers','Texans','Titans','Vikings','Commanders'],
+    Hockey: ['Avalanche','Blackhawks','Blue Jackets','Blues','Bruins','Canadiens','Canucks','Capitals','Coyotes','Ducks','Flames','Flyers','Golden Knights','Hurricanes','Islanders','Jets','Kings','Kraken','Lightning','Maple Leafs','Oilers','Panthers','Penguins','Predators','Rangers','Red Wings','Sabres','Senators','Sharks','Stars','Wild'],
+    Soccer: ['Arsenal','Atletico Madrid','Barcelona','Bayern Munich','Borussia Dortmund','Chelsea','Club Atletico de Madrid','Everton','Inter Milan','Juventus','Leeds United','Leicester City','Liverpool','Manchester City','Manchester United','Milan','Napoli','Newcastle United','PSG','Real Madrid','Roma','Tottenham','Valencia','West Ham','Wolverhampton'],
+  };
+
+  const sport = c.sport || 'Baseball';
+  const teamList = SPORT_TEAMS[sport] || [];
+  // Current teams — stored as array or comma-separated string
+  const currentTeams = Array.isArray(c.teams) ? c.teams : (c.team ? c.team.split(',').map(t=>t.trim()) : []);
+
+  const efTeam = `<div class="field" style="flex-direction:column;align-items:flex-start;gap:6px;padding:8px 12px">
+    <span class="field-key" style="font-size:9px;text-transform:uppercase;letter-spacing:.6px">Team</span>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;width:100%" id="teamTags">
+      ${currentTeams.map(t=>`<span style="display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;background:var(--surface3);border:1px solid var(--border2);font-size:11px;font-family:'DM Mono',monospace">
+        ${t}<span onclick="removeTeam('${id}','${t.replace(/'/g,"\\'")}',this)" style="cursor:pointer;color:var(--text3);margin-left:2px;font-size:13px;line-height:1">×</span>
+      </span>`).join('')}
+      <select onchange="addTeam('${id}',this)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:20px;color:var(--text2);font-size:11px;padding:3px 8px;cursor:pointer;font-family:'Sora',sans-serif;max-width:130px">
+        <option value="">+ Add team</option>
+        ${teamList.map(t=>`<option value="${t}">${t}</option>`).join('')}
+        <option value="__custom__">Other (type)...</option>
+      </select>
+    </div>
+  </div>`;
+
+  // Quantity field
+  const efQty = `<div class="field" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px">
+    <span class="field-key" style="font-size:9px;text-transform:uppercase;letter-spacing:.6px">Quantity</span>
+    <input value="${c.quantity||1}" type="number" min="1" max="999"
+      style="width:80px;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0;transition:border-color .15s"
+      onfocus="this.style.borderBottomColor='var(--gold)'"
+      onblur="this.style.borderBottomColor='transparent';saveDetailField('${id}','quantity',this.value)"
+      onkeydown="if(event.key==='Enter')this.blur()">
+  </div>`;
+
   const ef = (label, field, value, placeholder='', type='text') =>
     `<div class="field" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px">
       <span class="field-key" style="font-size:9px;text-transform:uppercase;letter-spacing:.6px">${label}</span>
@@ -1976,7 +2014,7 @@ function openDetail(id){
       <select
         style="width:100%;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0;cursor:pointer;-webkit-appearance:none"
         onfocus="this.style.borderBottomColor='var(--gold)'"
-        onblur="this.style.borderBottomColor='transparent';saveDetailField('${id}','${field}',this.value)"
+        onblur="this.style.borderBottomColor='transparent'"
         onchange="saveDetailField('${id}','${field}',this.value)"
       >
         ${options.map(o=>`<option value="${o}" ${value===o?'selected':''}>${o}</option>`).join('')}
@@ -2032,7 +2070,7 @@ function openDetail(id){
       </div>
       <div class="fields" style="gap:4px">
         ${ef('Player / Athlete', 'player', c.player, 'e.g. Lionel Messi')}
-        ${ef('Team', 'team', c.team, 'e.g. Inter Miami')}
+        ${efTeam}
         ${efSelect('Sport', 'sport', c.sport, ['Baseball','Basketball','Football','Hockey','Soccer'])}
         ${ef('Season / Year', 'year', c.year, 'e.g. 2022-23')}
         ${ef('Manufacturer', 'brand', c.brand, 'e.g. Panini')}
@@ -2043,6 +2081,7 @@ function openDetail(id){
         ${ef('Numbered / Print Run', 'numbered', c.numbered, 'e.g. /99')}
         ${ef('Grade', 'grade', c.grade, 'e.g. PSA 9')}
         ${efSelect('Condition', 'condition', c.condition||'Near Mint or Better', ['Near Mint or Better','Excellent','Very Good','Poor','Graded'])}
+        ${efQty}
         ${efCheck('Rookie Card', 'rookie', c.rookie)}
         ${efCheck('Autographed', 'auto', c.auto)}
         ${efCheck('Relic / Patch', 'relic', c.relic)}
@@ -2080,6 +2119,40 @@ let editImgData = null;
 let editImgChanged = false;
 let editSport = 'Baseball';
 let editCardId = null;
+
+function addTeam(id, select){
+  const val = select.value;
+  if(!val) return;
+  if(val === '__custom__'){
+    const custom = prompt('Enter team name:');
+    if(!custom){ select.value=''; return; }
+    _addTeamToCard(id, custom.trim());
+  } else {
+    _addTeamToCard(id, val);
+  }
+  select.value = '';
+}
+
+function _addTeamToCard(id, team){
+  const idx = cards.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const current = Array.isArray(cards[idx].teams) ? cards[idx].teams : (cards[idx].team ? [cards[idx].team] : []);
+  if(current.includes(team)) return;
+  cards[idx].teams = [...current, team];
+  cards[idx].team = cards[idx].teams.join(', ');
+  save();
+  openDetail(id);
+}
+
+function removeTeam(id, team, el){
+  const idx = cards.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const current = Array.isArray(cards[idx].teams) ? cards[idx].teams : (cards[idx].team ? cards[idx].team.split(',').map(t=>t.trim()) : []);
+  cards[idx].teams = current.filter(t=>t!==team);
+  cards[idx].team = cards[idx].teams.join(', ');
+  save();
+  openDetail(id);
+}
 
 function saveDetailField(id, field, value){
   const idx = cards.findIndex(x=>x.id===id);
@@ -3665,26 +3738,31 @@ async function submitEbayListing(){
       </ConditionDescriptor>
     </ConditionDescriptors>`;
   const sp = (name, value) => value ? `<NameValueList><Name>${name}</Name><Value>${escXml(String(value))}</Value></NameValueList>` : '';
+  const spMulti = (name, values) => Array.isArray(values) && values.length
+    ? values.map(v=>`<NameValueList><Name>${name}</Name><Value>${escXml(String(v))}</Value></NameValueList>`).join('')
+    : sp(name, values);
   const sportLeagueMap = {Baseball:'MLB',Basketball:'NBA',Football:'NFL',Hockey:'NHL',Soccer:'MLS'};
   const ebaySpor = c.sport === 'Soccer' ? 'Football' : c.sport;
   const features = [c.rookie?'Rookie':null, c.auto?'Autograph':null, c.relic?'Memorabilia/Relic':null, c.numbered?'Serial Numbered':null].filter(Boolean).join('|') || 'Basic';
   const gradingService = c.grade ? (c.grade.includes('PSA')?'PSA':c.grade.includes('BGS')||c.grade.includes('Beckett')?'BGS':c.grade.includes('SGC')?'SGC':null) : null;
+  const teams = Array.isArray(c.teams) && c.teams.length ? c.teams : (c.team ? c.team.split(',').map(t=>t.trim()) : []);
+  const qty = parseInt(c.quantity) || 1;
   const itemSpecificsXml = `<ItemSpecifics>
       ${sp('Player/Athlete', c.player)}
       ${sp('Manufacturer', c.brand || 'Unknown')}
       ${sp('Season', c.year)}
-      ${sp('Year Manufactured', c.year)}
+      ${sp('Year Manufactured', c.year ? c.year.split('-')[0] : null)}
       ${sp('Set', c.set || c.brand || 'Base Set')}
-      ${sp('Insert Set', c.parallel || c.set || '')}
+      ${sp('Insert Set', c.parallel || c.insertSet || '')}
       ${sp('Card Name', c.player)}
-      ${sp('Team', c.team)}
+      ${spMulti('Team', teams.length ? teams : (c.team ? [c.team] : []))}
       ${sp('Sport', ebaySpor)}
       ${sp('League', sportLeagueMap[c.sport] || c.sport)}
       ${sp('Type', 'Sports Trading Card')}
       ${sp('Parallel/Variety', c.parallel || 'Base')}
       ${sp('Features', features)}
       ${sp('Autographed', c.auto ? 'Yes' : 'No')}
-      ${sp('Card Number', c.numbered)}
+      ${sp('Card Number', c.cardNumber || c.numbered)}
       ${sp('Grade', c.grade)}
       ${sp('Grading Service', gradingService)}
       ${sp('Condition', condInfo.name)}
@@ -3723,7 +3801,7 @@ async function submitEbayListing(){
     <PaymentMethods>PayPal</PaymentMethods>
     ${pictureUrls.length ? `<PictureDetails>${pictureUrls.map(u=>`<PictureURL>${escXml(u)}</PictureURL>`).join('')}</PictureDetails>` : ''}
     <PostalCode>${escXml(zip)}</PostalCode>
-    <Quantity>1</Quantity>
+    <Quantity>${qty}</Quantity>
     ${itemSpecificsXml}
     <ReturnPolicy>
       <ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>
