@@ -1911,7 +1911,25 @@ function openDetail(id){
   document.getElementById('detailTitle').textContent=c.player||'Card Detail';
   document.getElementById('detailHotIcon').textContent=isHot?'🔥':'';
   const imgSrc = c.imgData || c.cloudImgUrl || null;
-  const img=imgSrc?`<img src="${imgSrc}" alt="">`:'<div class="detail-img-placeholder">🃏</div>';
+  const allImgs = c.imgDataAll || (imgSrc ? [imgSrc] : []);
+
+  // Image gallery — single image or scrollable row
+  const imgGallery = allImgs.length > 1
+    ? `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+        ${allImgs.map((src,i) => `<div style="flex-shrink:0;width:${i===0?'180px':'120px'};aspect-ratio:3/4;border-radius:10px;overflow:hidden;border:${i===0?'2px solid var(--gold)':'1px solid var(--border)'};background:var(--surface2)">
+          <img src="${src}" style="width:100%;height:100%;object-fit:cover">
+        </div>`).join('')}
+        <div style="flex-shrink:0;width:80px;aspect-ratio:3/4;border-radius:10px;border:1.5px dashed var(--border2);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:11px;gap:4px" onclick="addMorePhotos('${id}')">
+          <span style="font-size:20px">+</span>Add photo
+        </div>
+      </div>`
+    : `<div style="display:flex;gap:8px;margin-bottom:14px;align-items:flex-start">
+        <div class="detail-img-wrap" style="margin:0;flex-shrink:0">${imgSrc?`<img src="${imgSrc}" alt="">`:'<div class="detail-img-placeholder">🃏</div>'}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px">
+          <button onclick="addMorePhotos('${id}')" style="padding:8px 12px;border-radius:8px;border:1.5px dashed var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;font-family:'Sora',sans-serif;white-space:nowrap">+ Add photo</button>
+          ${imgSrc?`<div style="font-size:10px;color:var(--text3);text-align:center">Tap to add<br>back/side views</div>`:''}
+        </div>
+      </div>`;
   const hotBox=isHot&&hotInfo?`<div class="hot-alert-box"><div class="hot-alert-title">🔥 This card is HOT right now</div><div class="hot-alert-body"><strong>${hotInfo.reason}</strong> — ${hotInfo.news}${hotInfo.sellWindow?'<br><br><strong>Sell window:</strong> '+hotInfo.sellWindow:''}</div></div>`:'';
 
   // Financials
@@ -1931,12 +1949,39 @@ function openDetail(id){
       <button onclick="markUnsold('${id}')" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);font-size:11px;cursor:pointer;font-family:'Sora',sans-serif">Undo</button>
     </div>`:'';
 
-  // Card detail chips — compact row format
-  const detailChips = [
-    c.sport, c.year, c.brand, c.team,
-    c.parallel, c.numbered, c.grade,
-    c.rookie?'RC':null, c.auto?'Auto':null, c.relic?'Relic':null
-  ].filter(Boolean).map(v=>`<span class="chip" style="font-size:10px;padding:3px 8px">${v}</span>`).join('');
+  // Inline editable field helper
+  const ef = (label, field, value, placeholder='', type='text') =>
+    `<div class="field" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px">
+      <span class="field-key" style="font-size:9px;text-transform:uppercase;letter-spacing:.6px">${label}</span>
+      <input
+        value="${(value||'').toString().replace(/"/g,'&quot;')}"
+        placeholder="${placeholder||'—'}"
+        type="${type}"
+        style="width:100%;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0;transition:border-color .15s"
+        onfocus="this.style.borderBottomColor='var(--gold)'"
+        onblur="this.style.borderBottomColor='transparent';saveDetailField('${id}','${field}',this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()"
+      >
+    </div>`;
+
+  const efCheck = (label, field, value) =>
+    `<div class="field" style="cursor:pointer" onclick="toggleDetailField('${id}','${field}',this)">
+      <span class="field-key">${label}</span>
+      <span class="field-val" style="color:${value?'var(--green)':'var(--text3)'}" data-field="${field}">${value?'Yes':'No'}</span>
+    </div>`;
+
+  const efSelect = (label, field, value, options) =>
+    `<div class="field" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px">
+      <span class="field-key" style="font-size:9px;text-transform:uppercase;letter-spacing:.6px">${label}</span>
+      <select
+        style="width:100%;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0;cursor:pointer;-webkit-appearance:none"
+        onfocus="this.style.borderBottomColor='var(--gold)'"
+        onblur="this.style.borderBottomColor='transparent';saveDetailField('${id}','${field}',this.value)"
+        onchange="saveDetailField('${id}','${field}',this.value)"
+      >
+        ${options.map(o=>`<option value="${o}" ${value===o?'selected':''}>${o}</option>`).join('')}
+      </select>
+    </div>`;
 
   // eBay listing section — inline, no modal
   const priceNote=isHot?` <span style="color:var(--orange);font-size:10px">↑ trending</span>`:'';
@@ -1976,17 +2021,31 @@ function openDetail(id){
     <div style="display:none" class="desktop-back-btn">
       <button onclick="goBack()" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:13px;cursor:pointer;font-family:'Sora',sans-serif;margin-bottom:16px">← Back</button>
     </div>
-    <div class="detail-img-wrap">${img}</div>
+    ${imgGallery}
     ${soldBanner}
     ${hotBox}
 
     <div class="section">
-      <div class="section-label">Card details</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${detailChips}</div>
-      <div class="fields">
-        ${[['Player',c.player],['Team',c.team],['Set',c.set],['Parallel',c.parallel],['Card #',c.numbered],['Grade',c.grade],['Condition',c.condition]]
-          .filter(([,v])=>v!=null)
-          .map(([k,v])=>`<div class="field"><span class="field-key">${k}</span><span class="field-val">${v}</span></div>`).join('')}
+      <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Card details</span>
+        <span style="font-size:10px;color:var(--text3);font-weight:400">Tap any field to edit</span>
+      </div>
+      <div class="fields" style="gap:4px">
+        ${ef('Player / Athlete', 'player', c.player, 'e.g. Lionel Messi')}
+        ${ef('Team', 'team', c.team, 'e.g. Inter Miami')}
+        ${efSelect('Sport', 'sport', c.sport, ['Baseball','Basketball','Football','Hockey','Soccer'])}
+        ${ef('Season / Year', 'year', c.year, 'e.g. 2022-23')}
+        ${ef('Manufacturer', 'brand', c.brand, 'e.g. Panini')}
+        ${ef('Set', 'set', c.set, 'e.g. 2022-23 Panini Select EPL')}
+        ${ef('Insert Set', 'insertSet', c.insertSet, 'e.g. Club Prizm Badge')}
+        ${ef('Parallel / Variety', 'parallel', c.parallel, 'e.g. Club Badge')}
+        ${ef('Card Number', 'cardNumber', c.cardNumber||c.numbered, 'e.g. 16')}
+        ${ef('Numbered / Print Run', 'numbered', c.numbered, 'e.g. /99')}
+        ${ef('Grade', 'grade', c.grade, 'e.g. PSA 9')}
+        ${efSelect('Condition', 'condition', c.condition||'Near Mint or Better', ['Near Mint or Better','Excellent','Very Good','Poor','Graded'])}
+        ${efCheck('Rookie Card', 'rookie', c.rookie)}
+        ${efCheck('Autographed', 'auto', c.auto)}
+        ${efCheck('Relic / Patch', 'relic', c.relic)}
       </div>
     </div>
 
@@ -2021,6 +2080,61 @@ let editImgData = null;
 let editImgChanged = false;
 let editSport = 'Baseball';
 let editCardId = null;
+
+function saveDetailField(id, field, value){
+  const idx = cards.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  cards[idx][field] = value || null;
+  // Regenerate eBay title when key fields change
+  if(['player','year','brand','parallel','numbered','rookie','auto','grade','team'].includes(field)){
+    const c = cards[idx];
+    cards[idx].ebayTitle = generateEbayTitle({
+      player:c.player, year:c.year, brand:c.brand, parallel:c.parallel,
+      numbered:c.numbered, rookie:c.rookie, auto:c.auto, grade:c.grade, team:c.team
+    });
+  }
+  save();
+}
+
+function toggleDetailField(id, field, el){
+  const idx = cards.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  cards[idx][field] = !cards[idx][field];
+  const span = el.querySelector('[data-field]');
+  if(span){
+    span.textContent = cards[idx][field] ? 'Yes' : 'No';
+    span.style.color = cards[idx][field] ? 'var(--green)' : 'var(--text3)';
+  }
+  save();
+}
+
+function addMorePhotos(id){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.multiple = true;
+  input.onchange = async () => {
+    const files = Array.from(input.files);
+    if(!files.length) return;
+    const readers = files.map(f => new Promise(res => {
+      const r = new FileReader();
+      r.onload = e => res(e.target.result);
+      r.readAsDataURL(f);
+    }));
+    const newImgs = await Promise.all(readers);
+    const compressed = await Promise.all(newImgs.map(img => compressImage(img, 200)));
+    const finals = compressed.map((c,i) => c || newImgs[i]);
+    const idx = cards.findIndex(x=>x.id===id);
+    if(idx<0) return;
+    const existing = cards[idx].imgDataAll || (cards[idx].imgData ? [cards[idx].imgData] : []);
+    cards[idx].imgDataAll = [...existing, ...finals];
+    if(!cards[idx].imgData) cards[idx].imgData = finals[0];
+    save();
+    showToast(`✓ ${finals.length} photo${finals.length>1?'s':''} added`);
+    openDetail(id);
+  };
+  input.click();
+}
 
 function openEditModal(id){
   const c = cards.find(x=>x.id===id);
@@ -2134,7 +2248,8 @@ async function saveEditCard(){
     priceMin, priceMax, priceMid,
     notes: document.getElementById('editNotes').value.trim() || null,
     imgData,
-    cloudImgUrl: editImgChanged ? null : cards[idx].cloudImgUrl, // reset cloud URL if image changed
+    cloudImgUrl: editImgChanged ? null : cards[idx].cloudImgUrl,
+    imgDataAll: editImgChanged ? (imgData ? [imgData] : null) : cards[idx].imgDataAll,
     // Regenerate eBay title
     ebayTitle: generateEbayTitle({player, year: document.getElementById('editYear').value.trim(), brand: document.getElementById('editBrand').value.trim(), parallel: document.getElementById('editParallel').value.trim(), numbered: document.getElementById('editNumbered').value.trim(), rookie: document.getElementById('editRookie').checked, auto: document.getElementById('editAuto').checked, grade, team: document.getElementById('editTeam').value.trim()}),
   };
@@ -2506,19 +2621,14 @@ function saveManualCard(){
     manualEntry: true,
   };
 
-  // Compress image before saving if present
+  // Compress all images before saving
   if(manualImgData){
-    console.log('manualImgData present, length:', manualImgData.length, 'type:', manualImgData.substring(0,30));
-    compressImage(manualImgData, 200).then(compressed => {
-      const finalImg = compressed || manualImgData;
-      console.log('compressed length:', finalImg.length);
-      card.imgData = finalImg;
+    const allImgs = manualImgDataAll.length > 0 ? manualImgDataAll : [manualImgData];
+    Promise.all(allImgs.map(img => compressImage(img, 200))).then(compressed => {
+      const finals = compressed.map((c,i) => c || allImgs[i]);
+      card.imgData = finals[0];
+      card.imgDataAll = finals.length > 1 ? finals : null;
       cards.push(card);
-      localStorage.setItem('cv_cards', JSON.stringify(cards));
-      // verify it saved
-      const saved = JSON.parse(localStorage.getItem('cv_cards'));
-      const savedCard = saved.find(x=>x.id===card.id);
-      console.log('saved card imgData:', savedCard?.imgData ? savedCard.imgData.substring(0,30)+'...('+savedCard.imgData.length+'chars)' : 'NULL');
       save();
       updateStats();
       renderGrid();
@@ -2527,7 +2637,6 @@ function saveManualCard(){
       openDetail(card.id);
     });
   } else {
-    console.log('No image — saving without photo');
     cards.push(card);
     save();
     updateStats();
@@ -3518,26 +3627,29 @@ async function submitEbayListing(){
   const zip = getSellerZip();
   const shipCost = getShippingSingle();
 
-  // Upload image first — required by eBay
-  let pictureUrl = '';
-  const imgSource = c.imgData || c.cloudImgUrl || null;
-  if(imgSource){
-    listBtn.innerHTML = '<span class="list-btn-icon">📤</span> Uploading photo...';
-    const uploaded = await uploadImageToEbay(imgSource);
-    if(uploaded){
-      pictureUrl = uploaded;
-    } else {
-      // Photo upload failed — warn user but don't block
+  // Upload all images — required by eBay (up to 12)
+  const allImgSources = c.imgDataAll || (c.imgData ? [c.imgData] : []);
+  const imgSource = allImgSources[0] || c.cloudImgUrl || null;
+
+  if(!imgSource){
+    showToast('⚠ This card has no photo — please add one before listing on eBay');
+    listBtn.disabled = false;
+    listBtn.innerHTML = '<span class="list-btn-icon">🛒</span> Post to eBay';
+    return;
+  }
+
+  listBtn.innerHTML = `<span class="list-btn-icon">📤</span> Uploading ${allImgSources.length > 1 ? allImgSources.length+' photos' : 'photo'}...`;
+
+  const pictureUrls = [];
+  for(let i = 0; i < Math.min(allImgSources.length, 12); i++){
+    const uploaded = await uploadImageToEbay(allImgSources[i]);
+    if(uploaded) pictureUrls.push(uploaded);
+    if(!uploaded && i === 0){
       showToast('⚠ Photo upload failed — eBay requires at least 1 photo');
       listBtn.disabled = false;
       listBtn.innerHTML = '<span class="list-btn-icon">🛒</span> Post to eBay';
       return;
     }
-  } else {
-    showToast('⚠ This card has no photo — please add one before listing on eBay');
-    listBtn.disabled = false;
-    listBtn.innerHTML = '<span class="list-btn-icon">🛒</span> Post to eBay';
-    return;
   }
 
   listBtn.innerHTML = '<span class="list-btn-icon">⏳</span> Creating listing...';
@@ -3609,7 +3721,7 @@ async function submitEbayListing(){
     ${durationXml}
     <ListingType>${isAuction ? 'Chinese' : 'FixedPriceItem'}</ListingType>
     <PaymentMethods>PayPal</PaymentMethods>
-    ${pictureUrl ? `<PictureDetails><PictureURL>${escXml(pictureUrl)}</PictureURL></PictureDetails>` : ''}
+    ${pictureUrls.length ? `<PictureDetails>${pictureUrls.map(u=>`<PictureURL>${escXml(u)}</PictureURL>`).join('')}</PictureDetails>` : ''}
     <PostalCode>${escXml(zip)}</PostalCode>
     <Quantity>1</Quantity>
     ${itemSpecificsXml}
