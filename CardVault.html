@@ -107,7 +107,7 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
 .back-btn{background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:7px 16px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
 .back-btn:active{background:var(--surface2)}
 .detail-header-bar h2{font-size:15px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.detail-scroll{flex:1;overflow-y:auto;padding:18px;-webkit-overflow-scrolling:touch;background:var(--bg)}
+.detail-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px;-webkit-overflow-scrolling:touch;background:var(--bg);height:0;min-height:0}
 .detail-img-wrap{width:100%;max-width:240px;margin:0 auto 18px;display:block;border-radius:var(--radius-lg);overflow:hidden;aspect-ratio:3/4;background:var(--surface);border:1px solid var(--border)}
 .detail-img-wrap img{width:100%;height:100%;object-fit:cover}
 .detail-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;opacity:.15}
@@ -329,7 +329,7 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
 .detail-header-bar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
 .back-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:'Sora',sans-serif}
 .detail-header-bar h2{font-size:15px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.detail-scroll{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
+.detail-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;-webkit-overflow-scrolling:touch;height:0;min-height:0}
 .detail-img-wrap{width:100%;max-width:240px;margin:0 auto 16px;display:block;border-radius:var(--radius-lg);overflow:hidden;aspect-ratio:3/4;background:var(--surface2);border:1px solid var(--border2)}
 .detail-img-wrap img{width:100%;height:100%;object-fit:cover}
 .detail-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;opacity:.2}
@@ -704,18 +704,32 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
     <!-- CATALOG -->
     <div class="view active" id="viewCatalog">
       <!-- Normal toolbar -->
-      <div class="toolbar" id="normalToolbar">
-        <div class="tabs">
-          <div class="tab active" onclick="filterCards('all',this)">All</div>
-          <div class="tab" onclick="filterCards('sold',this)">Sold</div>
-          <div class="tab" onclick="filterCards('Baseball',this)">Baseball</div>
-          <div class="tab" onclick="filterCards('Basketball',this)">Basketball</div>
-          <div class="tab" onclick="filterCards('Football',this)">Football</div>
-          <div class="tab" onclick="filterCards('Soccer',this)">Soccer</div>
-          <div class="tab" onclick="filterCards('Hockey',this)">Hockey</div>
+      <div class="toolbar" id="normalToolbar" style="flex-direction:column;gap:8px;padding:8px 12px">
+        <div style="display:flex;gap:8px;align-items:center;width:100%">
+          <div style="flex:1;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:6px 10px">
+            <i class="ti ti-search" style="color:var(--text3);font-size:14px;flex-shrink:0"></i>
+            <input id="catalogSearch" type="text" placeholder="Search player, team, year, set..."
+              style="flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-family:'Sora',sans-serif;min-width:0"
+              oninput="onSearchInput(this.value)"
+              onkeydown="if(event.key==='Escape'){this.value='';onSearchInput('')}">
+            <button id="searchClearBtn" onclick="clearSearch()" style="display:none;background:none;border:none;color:var(--text3);cursor:pointer;padding:0;font-size:16px;line-height:1;flex-shrink:0">×</button>
+          </div>
+          <button id="viewToggleBtn" onclick="toggleView()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:14px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0">⊞</button>
+          <button class="lot-mode-btn" onclick="enterLotMode()" title="Sell as lot" style="flex-shrink:0">
+            <i class="ti ti-shopping-bag" style="font-size:13px"></i> Lot
+          </button>
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
-          <select id="sortSelect" onchange="setSortOrder(this.value)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:11px;padding:5px 8px;font-family:'Sora',sans-serif;cursor:pointer">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;overflow-x:auto;scrollbar-width:none">
+          <div class="tabs" style="flex:1;flex-wrap:nowrap">
+            <div class="tab active" onclick="filterCards('all',this)">All</div>
+            <div class="tab" onclick="filterCards('sold',this)">Sold</div>
+            <div class="tab" onclick="filterCards('Baseball',this)">Baseball</div>
+            <div class="tab" onclick="filterCards('Basketball',this)">Basketball</div>
+            <div class="tab" onclick="filterCards('Football',this)">Football</div>
+            <div class="tab" onclick="filterCards('Soccer',this)">Soccer</div>
+            <div class="tab" onclick="filterCards('Hockey',this)">Hockey</div>
+          </div>
+          <select id="sortSelect" onchange="setSortOrder(this.value)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:11px;padding:5px 8px;font-family:'Sora',sans-serif;cursor:pointer;flex-shrink:0">
             <option value="added">Date added</option>
             <option value="player">Player A-Z</option>
             <option value="team">Team A-Z</option>
@@ -723,10 +737,6 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text)}
             <option value="value_high">Value ↓</option>
             <option value="value_low">Value ↑</option>
           </select>
-          <button id="viewToggleBtn" onclick="toggleView()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-size:14px;padding:5px 9px;cursor:pointer;line-height:1">⊞</button>
-          <button class="lot-mode-btn" onclick="enterLotMode()" title="Sell as lot">
-            <i class="ti ti-shopping-bag" style="font-size:13px"></i> Lot
-          </button>
         </div>
       </div>
       <!-- Lot selection toolbar -->
@@ -943,6 +953,23 @@ alter table cards enable row level security; create policy "public access" on ca
   </div><!-- end app-body -->
 
 </div><!-- end app -->
+
+<!-- CROP MODAL -->
+<div class="modal-overlay hidden" id="cropModal">
+  <div class="modal-sheet" style="max-width:500px;padding:20px">
+    <div class="modal-drag"></div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">✂️ Crop Image</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Locked to 4:5 ratio — drag to reposition</div>
+    <div style="position:relative;background:#111;border-radius:10px;overflow:hidden;user-select:none" id="cropContainer">
+      <canvas id="cropCanvas" style="display:block;max-width:100%;cursor:crosshair"></canvas>
+    </div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Drag to select crop area</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+      <button onclick="closeCropModal()" style="padding:11px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:13px;cursor:pointer;font-family:'Sora',sans-serif">Cancel</button>
+      <button onclick="applyCrop()" style="padding:11px;border-radius:8px;border:none;background:var(--gold);color:#111;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif">Apply Crop</button>
+    </div>
+  </div>
+</div>
 
 <!-- ADD CARD CHOICE MODAL -->
 <div class="modal-overlay hidden" id="addModal">
@@ -1827,11 +1854,28 @@ function renderGrid(){
   else if(currentFilter==='all') list = cards.filter(c=>!c.sold);
   else list = cards.filter(c=>c.sport===currentFilter&&!c.sold);
 
+  // Apply search query
+  if(searchQuery){
+    list = list.filter(c=>{
+      const haystack = [
+        c.player, c.team, c.teams?.join(' '), c.year, c.brand, c.set,
+        c.parallel, c.grade, c.numbered, c.ebayTitle, c.sport,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(searchQuery);
+    });
+  }
+
   list = sortCards(list);
 
   if(!list.length){
     grid.className='cards-grid'; grid.style.display='';
-    grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🃏</div><h3>${cards.length?'No cards here':'Collection is empty'}</h3><p>${cards.length?'Try another filter':'Tap Add Card to photograph your first card'}</p></div>`;
+    const msg = searchQuery
+      ? `No cards match "<strong>${searchQuery}</strong>"`
+      : cards.length ? 'No cards here' : 'Collection is empty';
+    const sub = searchQuery
+      ? `<button onclick="clearSearch()" style="margin-top:10px;padding:7px 16px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;font-family:'Sora',sans-serif">Clear search</button>`
+      : `<p>${cards.length?'Try another filter':'Tap Add Card to photograph your first card'}</p>`;
+    grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><h3>${msg}</h3>${sub}</div>`;
     return;
   }
 
@@ -1952,10 +1996,41 @@ Return this exact JSON:
 
     // Compress image before saving
     const compressed = await compressImage(imgData, 200);
-    // Map AI fields to card schema
-    if(info.insertSet && !info.parallel) info.parallel = info.insertSet;
-    if(info.cardNumber) info.numbered = info.numbered || info.cardNumber;
-    const card={id:uid(), imgData: compressed || imgData, ...info};
+
+    // Normalize AI fields → card schema
+    const card = {
+      id: uid(),
+      imgData: compressed || imgData,
+      // Identity
+      player:    info.player    || null,
+      sport:     info.sport     || 'Soccer',
+      year:      info.year      || null,
+      brand:     info.brand     || null,
+      set:       info.set       || null,
+      insertSet: info.insertSet || null,
+      parallel:  info.parallel  || info.insertSet || null,
+      cardNumber:info.cardNumber|| null,
+      numbered:  info.numbered  || info.cardNumber || null,
+      // Team — normalize to both team string and teams array
+      team:      info.team      || null,
+      teams:     info.team ? info.team.split(',').map(t=>t.trim()).filter(Boolean) : [],
+      // Attributes
+      rookie:    !!info.rookie,
+      auto:      !!info.auto,
+      relic:     !!info.relic,
+      grade:     info.grade     || null,
+      condition: info.condition || 'Near Mint or Better',
+      quantity:  1,
+      // Pricing
+      priceMin:  info.priceMin  || null,
+      priceMax:  info.priceMax  || null,
+      priceMid:  info.priceMid  || null,
+      // eBay copy
+      ebayDesc:  info.ebayDesc  || null,
+    };
+
+    // Generate clean eBay title using our rules (not the AI's)
+    card.ebayTitle = generateEbayTitle(card);
     cards.push(card);
     save(); updateStats(); renderGrid();
     showToast('✓ Identified: '+(info.player||'Card'));
@@ -1978,8 +2053,11 @@ function openDetail(id){
   const imgGallery = allImgs.length > 1
     ? `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
         ${allImgs.map((src,i) => `<div style="flex-shrink:0;width:${i===0?'180px':'120px'};aspect-ratio:3/4;border-radius:10px;overflow:hidden;border:${i===0?'2px solid var(--gold)':'1px solid var(--border)'};background:var(--surface2);position:relative">
-          <img src="${src}" style="width:100%;height:100%;object-fit:cover">
-          <button onclick="deleteCardImage('${id}',${i})" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+          <img src="${src}" style="width:100%;height:100%;object-fit:contain">
+          <div style="position:absolute;top:4px;right:4px;display:flex;gap:3px">
+            <button onclick="openCropModal('${id}',${i})" style="width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center" title="Crop">✂</button>
+            <button onclick="deleteCardImage('${id}',${i})" style="width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center" title="Delete">×</button>
+          </div>
           ${i===0?'<div style="position:absolute;bottom:4px;left:4px;font-size:9px;background:rgba(0,0,0,.5);color:var(--gold);padding:2px 6px;border-radius:4px;font-weight:600">PRIMARY</div>':''}
         </div>`).join('')}
         <div style="flex-shrink:0;width:80px;aspect-ratio:3/4;border-radius:10px;border:1.5px dashed var(--border2);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:11px;gap:4px" onclick="addMorePhotos('${id}')">
@@ -1989,7 +2067,10 @@ function openDetail(id){
     : `<div style="display:flex;gap:8px;margin-bottom:14px;align-items:flex-start">
         <div style="position:relative;flex-shrink:0">
           <div class="detail-img-wrap" style="margin:0">${imgSrc?`<img src="${imgSrc}" alt="">`:'<div class="detail-img-placeholder">🃏</div>'}</div>
-          ${imgSrc?`<button onclick="deleteCardImage('${id}',0)" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>`:''}
+          ${imgSrc?`<div style="position:absolute;top:4px;right:4px;display:flex;gap:3px">
+            <button onclick="openCropModal('${id}',0)" style="width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center" title="Crop">✂</button>
+            <button onclick="deleteCardImage('${id}',0)" style="width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center" title="Delete">×</button>
+          </div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px">
           <button onclick="addMorePhotos('${id}')" style="padding:8px 12px;border-radius:8px;border:1.5px dashed var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;font-family:'Sora',sans-serif;white-space:nowrap">+ Add photo</button>
@@ -2275,6 +2356,145 @@ function toggleDetailField(id, field, el){
     span.style.color = cards[idx][field] ? 'var(--green)' : 'var(--text3)';
   }
   save();
+}
+
+// -- IMAGE CROP ─────────────────────────────────────────────
+let _cropState = { cardId:null, imgIndex:0, img:null, startX:0, startY:0, endX:0, endY:0, dragging:false, scale:1 };
+
+function openCropModal(cardId, imgIndex){
+  const c = cards.find(x=>x.id===cardId);
+  if(!c) return;
+  const allImgs = c.imgDataAll || (c.imgData ? [c.imgData] : []);
+  const src = allImgs[imgIndex];
+  if(!src) return;
+
+  _cropState = { cardId, imgIndex, img:null, startX:0, startY:0, endX:0, endY:0, dragging:false, scale:1 };
+
+  const modal = document.getElementById('cropModal');
+  modal.classList.remove('hidden');
+
+  const canvas = document.getElementById('cropCanvas');
+  const ctx = canvas.getContext('2d');
+  const image = new Image();
+  image.onload = () => {
+    _cropState.img = image;
+    const maxW = Math.min(460, window.innerWidth - 48);
+    _cropState.scale = maxW / image.naturalWidth;
+    canvas.width = image.naturalWidth * _cropState.scale;
+    canvas.height = image.naturalHeight * _cropState.scale;
+
+    // Auto-init crop selection to 5:4 ratio, centered on image
+    const RATIO = 4 / 5; // width:height = 4:5 (portrait)
+    let cropW = canvas.width * 0.9;
+    let cropH = cropW / RATIO;
+    if(cropH > canvas.height * 0.9){
+      cropH = canvas.height * 0.9;
+      cropW = cropH * RATIO;
+    }
+    _cropState.startX = (canvas.width - cropW) / 2;
+    _cropState.startY = (canvas.height - cropH) / 2;
+    _cropState.endX = _cropState.startX + cropW;
+    _cropState.endY = _cropState.startY + cropH;
+
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    drawCropOverlay(ctx, canvas);
+  };
+  image.src = src;
+
+  // Touch/mouse events — enforce 5:4 ratio while dragging
+  const getPos = e => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: Math.max(0,Math.min(canvas.width, t.clientX - r.left)),
+             y: Math.max(0,Math.min(canvas.height, t.clientY - r.top)) };
+  };
+
+  canvas.onmousedown = canvas.ontouchstart = e => {
+    e.preventDefault();
+    const p = getPos(e);
+    _cropState.startX = p.x;
+    _cropState.startY = p.y;
+    _cropState.endX = p.x;
+    _cropState.endY = p.y;
+    _cropState.dragging = true;
+  };
+
+  canvas.onmousemove = canvas.ontouchmove = e => {
+    if(!_cropState.dragging) return;
+    e.preventDefault();
+    const p = getPos(e);
+    const dx = p.x - _cropState.startX;
+    const dy = p.y - _cropState.startY;
+    const RATIO = 4 / 5;
+    // Lock to 5:4 — use whichever dimension the user dragged more
+    let w = dx, h = dy;
+    if(Math.abs(dx) > Math.abs(dy)){
+      h = Math.sign(dy||1) * Math.abs(dx) / RATIO;
+    } else {
+      w = Math.sign(dx||1) * Math.abs(dy) * RATIO;
+    }
+    _cropState.endX = _cropState.startX + w;
+    _cropState.endY = _cropState.startY + h;
+    const ctx2 = canvas.getContext('2d');
+    ctx2.drawImage(_cropState.img, 0, 0, canvas.width, canvas.height);
+    drawCropOverlay(ctx2, canvas);
+  };
+
+  canvas.onmouseup = canvas.ontouchend = () => { _cropState.dragging = false; };
+}
+
+function drawCropOverlay(ctx, canvas){
+  const { startX, startY, endX, endY } = _cropState;
+  const x = Math.min(startX, endX), y = Math.min(startY, endY);
+  const w = Math.abs(endX - startX), h = Math.abs(endY - startY);
+  // Dim outside selection
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Clear selection area
+  ctx.clearRect(x, y, w, h);
+  ctx.drawImage(_cropState.img, x / _cropState.scale, y / _cropState.scale, w / _cropState.scale, h / _cropState.scale, x, y, w, h);
+  // Selection border
+  ctx.strokeStyle = 'rgba(245,197,66,0.9)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+  // Corner handles
+  const hs = 8;
+  ctx.fillStyle = 'var(--gold,#f5c542)';
+  [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([cx,cy])=> ctx.fillRect(cx-hs/2, cy-hs/2, hs, hs));
+}
+
+function applyCrop(){
+  const { cardId, imgIndex, img, startX, startY, endX, endY, scale } = _cropState;
+  const x = Math.min(startX, endX), y = Math.min(startY, endY);
+  const w = Math.abs(endX - startX), h = Math.abs(endY - startY);
+  if(w < 10 || h < 10){ showToast('Selection too small'); return; }
+
+  // Always output at standard 500×400 (5:4)
+  const OUT_W = 400, OUT_H = 500;
+  const out = document.createElement('canvas');
+  out.width = OUT_W; out.height = OUT_H;
+  out.getContext('2d').drawImage(img,
+    x / scale, y / scale, w / scale, h / scale,
+    0, 0, OUT_W, OUT_H
+  );
+
+  const cropped = out.toDataURL('image/jpeg', 0.92);
+  const idx = cards.findIndex(x=>x.id===cardId);
+  if(idx<0){ closeCropModal(); return; }
+  const allImgs = cards[idx].imgDataAll || (cards[idx].imgData ? [cards[idx].imgData] : []);
+  allImgs[imgIndex] = cropped;
+  cards[idx].imgDataAll = allImgs;
+  cards[idx].imgData = allImgs[0];
+  save();
+  closeCropModal();
+  showToast('✓ Image cropped');
+  openDetail(cardId);
+}
+
+function closeCropModal(){
+  document.getElementById('cropModal').classList.add('hidden');
+  const canvas = document.getElementById('cropCanvas');
+  canvas.onmousedown = canvas.ontouchstart = canvas.onmousemove = canvas.ontouchmove = canvas.onmouseup = canvas.ontouchend = null;
 }
 
 function deleteCardImage(id, index){
@@ -2977,6 +3197,24 @@ function toggleView(){
   renderGrid();
   renderGrid();
   saveSettings();
+}
+
+let searchQuery = '';
+
+function onSearchInput(val){
+  searchQuery = val.trim().toLowerCase();
+  const clearBtn = document.getElementById('searchClearBtn');
+  if(clearBtn) clearBtn.style.display = searchQuery ? 'block' : 'none';
+  renderGrid();
+}
+
+function clearSearch(){
+  searchQuery = '';
+  const input = document.getElementById('catalogSearch');
+  if(input) input.value = '';
+  const clearBtn = document.getElementById('searchClearBtn');
+  if(clearBtn) clearBtn.style.display = 'none';
+  renderGrid();
 }
 
 function setSortOrder(val){
@@ -4014,9 +4252,10 @@ async function submitEbayListing(){
   const descBody = `${c.ebayDesc||'Sports card in good condition.'}\n\n${[c.auto?'✓ Autographed':null, c.relic?'✓ Relic/Patch':null, c.rookie?'✓ Rookie Card':null, c.numbered?'✓ Numbered '+c.numbered:null].filter(Boolean).join('\n')}\nCondition: ${condInfo.name}`;
 
   // Build XML — BIN and Auction have different price/duration structures
+  // Pure auction OR pure BIN — no hybrid
   const priceXml = isAuction
-    ? `<StartPrice>${startPrice.toFixed(2)}</StartPrice>${binPrice > startPrice ? `<BuyItNowPrice>${binPrice.toFixed(2)}</BuyItNowPrice>` : ''}`
-    : `<StartPrice>${binPrice.toFixed(2)}</StartPrice>`;
+    ? `<StartPrice>${startPrice.toFixed(2)}</StartPrice>`
+    : `<BuyItNowPrice>${binPrice.toFixed(2)}</BuyItNowPrice>`;
 
   const durationXml = isAuction
     ? `<ListingDuration>Days_${s.duration}</ListingDuration>`
