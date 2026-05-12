@@ -1999,7 +1999,7 @@ async function analyzeCard(imgData, filename, key){
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:1000,
+        model:'claude-sonnet-4-6',max_tokens:1000,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:mime,data:base64}},
           {type:'text',text:`You are a sports card expert with sharp eyes for fine print. Analyze this card image carefully and return ONLY a valid JSON object with no markdown or explanation.
@@ -2179,7 +2179,33 @@ function openDetail(id){
       >
     </div>`;
 
-  const efCheck = (label, field, value) =>
+  const LEAGUES = ['','Premier League','La Liga','Serie A','Bundesliga','Ligue 1',
+    'Argentina Primera División','MLS','Champions League','Europa League',
+    'Eredivisie','Primeira Liga','Scottish Premiership','Super Lig',
+    'MLB','NBA','NFL','NHL'];
+
+  const efLeague = (cardId, value) => {
+    const isCustom = value && !LEAGUES.includes(value);
+    return `<div class="field" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px">
+      <span class="field-key" style="font-size:9px;text-transform:uppercase;letter-spacing:.6px">League</span>
+      <select data-field="league"
+        style="width:100%;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0;cursor:pointer;-webkit-appearance:none"
+        onfocus="this.style.borderBottomColor='var(--gold)'"
+        onblur="this.style.borderBottomColor='transparent'"
+        onchange="markDetailDirty('${cardId}');if(this.value==='__custom__'){this.style.display='none';this.nextElementSibling.style.display='block';this.nextElementSibling.focus()}"
+      >
+        ${LEAGUES.map(l=>`<option value="${l}" ${(!isCustom&&value===l)?'selected':''}>${l||'— Not set —'}</option>`).join('')}
+        <option value="__custom__">Other (type)...</option>
+        ${isCustom?`<option value="${value}" selected>${value}</option>`:''}
+      </select>
+      <input data-field="league" placeholder="Type league name..."
+        style="display:${isCustom?'block':'none'};width:100%;background:transparent;border:none;border-bottom:1px solid var(--gold);color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0"
+        value="${isCustom?value:''}"
+        oninput="markDetailDirty('${cardId}')"
+        onblur="if(!this.value){this.style.display='none';this.previousElementSibling.style.display='block'}"
+      >
+    </div>`;
+  };
     `<div class="field" style="cursor:pointer" onclick="toggleDetailCheck('${id}','${field}',this)">
       <span class="field-key">${label}</span>
       <span class="field-val" style="color:${value?'var(--green)':'var(--text3)'}" data-field="${field}">${value?'Yes':'No'}</span>
@@ -2266,7 +2292,7 @@ function openDetail(id){
         ${ef('Manufacturer', 'brand', c.brand, 'e.g. Panini')}
         ${ef('Set', 'set', c.set, 'e.g. 2022-23 Panini Select EPL')}
         ${ef('Insert Set', 'insertSet', c.insertSet, 'e.g. Club Prizm Badge')}
-        ${ef('League', 'league', c.league, 'e.g. Premier League, La Liga')}
+        ${efLeague(id, c.league)}
         ${ef('Parallel / Variety', 'parallel', c.parallel, 'e.g. Club Badge')}
         ${ef('Card Number', 'cardNumber', c.cardNumber||c.numbered, 'e.g. 16')}
         ${ef('Numbered / Print Run', 'numbered', c.numbered, 'e.g. /99')}
@@ -2384,17 +2410,27 @@ function saveDetailAll(id){
   if(idx<0) return;
 
   // Collect all inputs/selects with data-field
+  // For league, prefer the visible input (custom) over the hidden select
+  const collected = {};
   document.querySelectorAll('[data-field]').forEach(el => {
     const field = el.dataset.field;
     if(!field) return;
     if(el.tagName === 'INPUT' || el.tagName === 'SELECT'){
-      cards[idx][field] = el.value || null;
+      // For duplicate fields (league combo), the visible one wins
+      if(el.tagName === 'INPUT' && el.style.display !== 'none' && el.value){
+        collected[field] = el.value || null;
+      } else if(el.tagName === 'SELECT' && el.style.display !== 'none' && el.value !== '__custom__'){
+        collected[field] = el.value || null;
+      } else if(!(field in collected)){
+        collected[field] = el.value || null;
+      }
     } else if(el.tagName === 'SPAN' && el.dataset.value !== undefined){
-      cards[idx][field] = el.dataset.value === 'yes';
+      collected[field] = el.dataset.value === 'yes';
     } else if(el.tagName === 'SPAN'){
-      cards[idx][field] = el.textContent === 'Yes';
+      collected[field] = el.textContent === 'Yes';
     }
   });
+  Object.assign(cards[idx], collected);
 
   const c = cards[idx];
   cards[idx].ebayTitle = generateEbayTitle({
@@ -2782,7 +2818,7 @@ async function refreshPrice(id, mode){
     : `What is the estimated market value of this sports card: "${cardDesc}"? Return ONLY a JSON object: {"priceMin":integer,"priceMax":integer,"priceMid":integer,"source":"AI estimate","note":"brief explanation"}`;
 
   try{
-    const body = { model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] };
+    const body = { model:'claude-sonnet-4-6', max_tokens:300, messages:[{role:'user',content:prompt}] };
     if(tools.length) body.tools = tools;
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -2790,7 +2826,14 @@ async function refreshPrice(id, mode){
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify(body)
     });
+    if(!resp.ok){
+      const err = await resp.text();
+      console.error('API error:', resp.status, err);
+      showToast(`API error ${resp.status} — check your API key`);
+      return;
+    }
     const data = await resp.json();
+    console.log('Price refresh response:', JSON.stringify(data).substring(0,200));
     const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
 
@@ -2883,7 +2926,7 @@ async function loadHotCards(force){
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:2000,
+        model:'claude-sonnet-4-6',max_tokens:2000,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:`You are a sports card market expert. Today is ${today}. Use web search to find current sports news and identify cards that are hot right now.
 
@@ -4329,12 +4372,28 @@ async function submitEbayListing(){
   const features = [c.rookie?'Rookie':null, c.auto?'Autograph':null, c.relic?'Memorabilia/Relic':null, c.numbered?'Serial Numbered':null].filter(Boolean).join('|') || 'Basic';
   const gradingService = c.grade ? (c.grade.includes('PSA')?'PSA':c.grade.includes('BGS')||c.grade.includes('Beckett')?'BGS':c.grade.includes('SGC')?'SGC':null) : null;
 
-  // Teams — always use the teams array, never fall back to splitting team string ad-hoc
-  const teams = Array.isArray(c.teams) && c.teams.length
-    ? c.teams
-    : (c.team ? c.team.split(',').map(t=>t.trim()).filter(Boolean) : []);
+  // Teams — rebuild from both possible sources to catch all teams
+  const teams = (() => {
+    if(Array.isArray(c.teams) && c.teams.length) return c.teams;
+    if(c.team) return c.team.split(',').map(t=>t.trim()).filter(Boolean);
+    return [];
+  })();
+  console.log('eBay teams:', teams, '| c.teams:', c.teams, '| c.team:', c.team);
 
   const qty = parseInt(c.quantity) || 1;
+
+  // Features — eBay expects each feature as a separate NameValueList entry
+  const featureList = [
+    c.rookie ? 'Rookie' : null,
+    c.auto ? 'Autographed' : null,
+    c.relic ? 'Memorabilia' : null,
+    c.numbered ? 'Serial Numbered' : null,
+  ].filter(Boolean);
+
+  const featuresXml = featureList.length
+    ? featureList.map(f => sp('Features', f)).join('')
+    : sp('Features', 'Basic');
+
   const itemSpecificsXml = `<ItemSpecifics>
       ${sp('Player/Athlete', c.player)}
       ${sp('Manufacturer', c.brand || 'Unknown')}
@@ -4348,14 +4407,13 @@ async function submitEbayListing(){
       ${sp('League', ebayLeague)}
       ${sp('Type', 'Sports Trading Card')}
       ${sp('Parallel/Variety', c.parallel || 'Base')}
-      ${sp('Features', features)}
+      ${featuresXml}
       ${sp('Autographed', c.auto ? 'Yes' : 'No')}
       ${sp('Card Number', c.cardNumber || c.numbered)}
       ${sp('Grade', c.grade)}
       ${sp('Grading Service', gradingService)}
       ${sp('Condition', condInfo.name)}
       ${sp('Card Size', 'Standard')}
-      ${sp('Card Thickness', '20 Pt.')}
       ${sp('Vintage', 'No')}
       ${sp('Original/Licensed Reprint', 'Original')}
       ${sp('Country of Origin', 'United States')}
