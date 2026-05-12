@@ -1629,25 +1629,23 @@ function updateSyncBar(msg, isError){
 }
 
 // Compress image to ~150KB for cloud storage
-async function compressImage(dataUrl, maxKB=150){
+async function compressImage(dataUrl, maxKB=150, maxDim=1200){
   if(!dataUrl) return null;
   return new Promise(res=>{
     const img = new Image();
     img.onload = ()=>{
       const canvas = document.createElement('canvas');
       let w = img.width, h = img.height;
-      const maxDim = 800;
       if(w > maxDim || h > maxDim){
         if(w > h){ h = Math.round(h * maxDim/w); w = maxDim; }
         else { w = Math.round(w * maxDim/h); h = maxDim; }
       }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      // Try quality steps until under maxKB
-      let quality = 0.8;
+      let quality = 0.92;
       let result = canvas.toDataURL('image/jpeg', quality);
-      while(result.length > maxKB * 1024 * 1.37 && quality > 0.2){
-        quality -= 0.1;
+      while(result.length > maxKB * 1024 * 1.37 && quality > 0.3){
+        quality -= 0.08;
         result = canvas.toDataURL('image/jpeg', quality);
       }
       res(result);
@@ -1667,7 +1665,7 @@ async function pushCard(card){
   // (avoids Supabase Storage auth complexity)
   let cardData = {...card};
   if(card.imgData && !card.imgData.startsWith('http')){
-    const compressed = await compressImage(card.imgData, 150);
+    const compressed = await compressImage(card.imgData, 400);
     cardData.imgData = compressed || card.imgData;
   }
 
@@ -2024,7 +2022,7 @@ Return this exact JSON:
     catch(e){ info={player:'Unknown Card',sport:'Baseball',priceMin:5,priceMax:20,priceMid:10,condition:'Near Mint',ebayTitle:'Sports Card',ebayDesc:'Sports card in good condition.'}; }
 
     // Compress image before saving
-    const compressed = await compressImage(imgData, 200);
+    const compressed = await compressImage(imgData, 500);
 
     // Normalize AI fields → card schema
     const card = {
@@ -2608,7 +2606,7 @@ function addMorePhotos(id){
       r.readAsDataURL(f);
     }));
     const newImgs = await Promise.all(readers);
-    const compressed = await Promise.all(newImgs.map(img => compressImage(img, 200)));
+    const compressed = await Promise.all(newImgs.map(img => compressImage(img, 500)));
     const finals = compressed.map((c,i) => c || newImgs[i]);
     const idx = cards.findIndex(x=>x.id===id);
     if(idx<0) return;
@@ -2711,7 +2709,7 @@ async function saveEditCard(){
   let imgData = cards[idx].imgData;
   if(editImgChanged){
     if(editImgData){
-      imgData = await compressImage(editImgData, 200) || editImgData;
+      imgData = await compressImage(editImgData, 500) || editImgData;
     } else {
       imgData = null;
     }
@@ -3197,7 +3195,7 @@ function saveManualCard(){
   // Compress all images before saving
   if(manualImgData){
     const allImgs = manualImgDataAll.length > 0 ? manualImgDataAll : [manualImgData];
-    Promise.all(allImgs.map(img => compressImage(img, 200))).then(compressed => {
+    Promise.all(allImgs.map(img => compressImage(img, 500))).then(compressed => {
       const finals = compressed.map((c,i) => c || allImgs[i]);
       card.imgData = finals[0];
       card.imgDataAll = finals.length > 1 ? finals : null;
@@ -3835,8 +3833,9 @@ async function uploadImageToEbay(base64DataUrl){
   if(!token){ console.warn('uploadImageToEbay: no token'); return null; }
   if(base64DataUrl.startsWith('http')) return base64DataUrl;
 
-  // Compress to max 50KB — smaller = less chance of corruption in transit
-  const compressed = await compressImage(base64DataUrl, 50);
+  // Use high quality for eBay — 800KB max, 2000px max dimension
+  // eBay recommends at least 1600px on longest side for best results
+  const compressed = await compressImage(base64DataUrl, 800, 2000);
   const finalUrl = compressed || base64DataUrl;
 
   const base64 = finalUrl.split(',')[1];
