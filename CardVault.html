@@ -2206,6 +2206,8 @@ function openDetail(id){
       >
     </div>`;
   };
+
+  const efCheck = (label, field, value) =>
     `<div class="field" style="cursor:pointer" onclick="toggleDetailCheck('${id}','${field}',this)">
       <span class="field-key">${label}</span>
       <span class="field-val" style="color:${value?'var(--green)':'var(--text3)'}" data-field="${field}">${value?'Yes':'No'}</span>
