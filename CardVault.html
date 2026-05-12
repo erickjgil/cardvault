@@ -2038,7 +2038,7 @@ Return this exact JSON:
       set:       info.set       || null,
       insertSet: info.insertSet || null,
       parallel:  info.parallel  || info.insertSet || null,
-      cardNumber:info.cardNumber|| null,
+      league:    info.league    || null,
       numbered:  info.numbered  || info.cardNumber || null,
       // Team — normalize to both team string and teams array
       team:      info.team      || null,
@@ -2268,6 +2268,7 @@ function openDetail(id){
         ${ef('Manufacturer', 'brand', c.brand, 'e.g. Panini')}
         ${ef('Set', 'set', c.set, 'e.g. 2022-23 Panini Select EPL')}
         ${ef('Insert Set', 'insertSet', c.insertSet, 'e.g. Club Prizm Badge')}
+        ${ef('League', 'league', c.league, 'e.g. Premier League, La Liga')}
         ${ef('Parallel / Variety', 'parallel', c.parallel, 'e.g. Club Badge')}
         ${ef('Card Number', 'cardNumber', c.cardNumber||c.numbered, 'e.g. 16')}
         ${ef('Numbered / Print Run', 'numbered', c.numbered, 'e.g. /99')}
@@ -4317,11 +4318,23 @@ async function submitEbayListing(){
   const spMulti = (name, values) => Array.isArray(values) && values.length
     ? values.map(v=>`<NameValueList><Name>${name}</Name><Value>${escXml(String(v))}</Value></NameValueList>`).join('')
     : sp(name, values);
-  const sportLeagueMap = {Baseball:'MLB',Basketball:'NBA',Football:'NFL',Hockey:'NHL',Soccer:'MLS'};
+
+  // eBay uses "Football" for what we call Soccer; other sports keep their name
   const ebaySpor = c.sport === 'Soccer' ? 'Football' : c.sport;
+
+  // League — only apply for US domestic leagues; international soccer = omit MLS
+  const leagueMap = {Baseball:'MLB', Basketball:'NBA', Football:'NFL', Hockey:'NHL'};
+  // For Soccer, don't default to MLS — only set if we have a specific league stored
+  const ebayLeague = leagueMap[c.sport] || c.league || null;
+
   const features = [c.rookie?'Rookie':null, c.auto?'Autograph':null, c.relic?'Memorabilia/Relic':null, c.numbered?'Serial Numbered':null].filter(Boolean).join('|') || 'Basic';
   const gradingService = c.grade ? (c.grade.includes('PSA')?'PSA':c.grade.includes('BGS')||c.grade.includes('Beckett')?'BGS':c.grade.includes('SGC')?'SGC':null) : null;
-  const teams = Array.isArray(c.teams) && c.teams.length ? c.teams : (c.team ? c.team.split(',').map(t=>t.trim()) : []);
+
+  // Teams — always use the teams array, never fall back to splitting team string ad-hoc
+  const teams = Array.isArray(c.teams) && c.teams.length
+    ? c.teams
+    : (c.team ? c.team.split(',').map(t=>t.trim()).filter(Boolean) : []);
+
   const qty = parseInt(c.quantity) || 1;
   const itemSpecificsXml = `<ItemSpecifics>
       ${sp('Player/Athlete', c.player)}
@@ -4329,11 +4342,11 @@ async function submitEbayListing(){
       ${sp('Season', c.year)}
       ${sp('Year Manufactured', c.year ? c.year.split('-')[0] : null)}
       ${sp('Set', c.set || c.brand || 'Base Set')}
-      ${sp('Insert Set', c.parallel || c.insertSet || '')}
+      ${sp('Insert Set', c.insertSet || null)}
       ${sp('Card Name', c.player)}
-      ${spMulti('Team', teams.length ? teams : (c.team ? [c.team] : []))}
+      ${spMulti('Team', teams)}
       ${sp('Sport', ebaySpor)}
-      ${sp('League', sportLeagueMap[c.sport] || c.sport)}
+      ${sp('League', ebayLeague)}
       ${sp('Type', 'Sports Trading Card')}
       ${sp('Parallel/Variety', c.parallel || 'Base')}
       ${sp('Features', features)}
