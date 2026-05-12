@@ -956,17 +956,17 @@ alter table cards enable row level security; create policy "public access" on ca
 
 <!-- CROP MODAL -->
 <div class="modal-overlay hidden" id="cropModal">
-  <div class="modal-sheet" style="max-width:500px;padding:20px">
+  <div class="modal-sheet" style="max-width:500px;padding:20px;display:flex;flex-direction:column;max-height:90vh">
     <div class="modal-drag"></div>
     <div style="font-size:15px;font-weight:700;margin-bottom:4px">✂️ Crop Image</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Locked to 4:5 ratio — drag to reposition</div>
-    <div style="position:relative;background:#111;border-radius:10px;overflow:hidden;user-select:none" id="cropContainer">
-      <canvas id="cropCanvas" style="display:block;max-width:100%;cursor:crosshair"></canvas>
+    <div style="position:relative;background:#111;border-radius:10px;overflow:hidden;user-select:none;flex:1;min-height:0" id="cropContainer">
+      <canvas id="cropCanvas" style="display:block;width:100%;height:100%;object-fit:contain;cursor:crosshair"></canvas>
     </div>
-    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Drag to select crop area</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
-      <button onclick="closeCropModal()" style="padding:11px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:13px;cursor:pointer;font-family:'Sora',sans-serif">Cancel</button>
-      <button onclick="applyCrop()" style="padding:11px;border-radius:8px;border:none;background:var(--gold);color:#111;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif">Apply Crop</button>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px;flex-shrink:0">Drag to move the crop selection</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;flex-shrink:0">
+      <button onclick="closeCropModal()" style="padding:13px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:14px;cursor:pointer;font-family:'Sora',sans-serif">Cancel</button>
+      <button onclick="applyCrop()" style="padding:13px;border-radius:10px;border:none;background:var(--gold);color:#111;font-size:14px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif">✓ Apply Crop</button>
     </div>
   </div>
 </div>
@@ -1012,87 +1012,116 @@ alter table cards enable row level security; create policy "public access" on ca
   <div class="modal-sheet" style="max-height:96vh">
     <div class="modal-drag"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div class="modal-title" id="manualModalTitle">Manual Entry</div>
+      <div class="modal-title" id="manualModalTitle">Add Card</div>
       <button style="background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:0 4px" onclick="closeManualModal()">×</button>
     </div>
-    <div class="modal-sub">Fill in what you know — everything is optional</div>
+    <div class="modal-sub" style="margin-bottom:12px">Fill in what you know — everything is optional</div>
 
-    <!-- Photo preview / upload -->
+    <!-- Photos — side by side horizontal strip -->
     <div id="manualPhotoArea" style="margin-bottom:14px">
-      <div id="manualPhotoPreview" style="width:80px;height:104px;border-radius:10px;background:var(--surface3);border:1.5px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:var(--text3);gap:4px" onclick="document.getElementById('manualFileInput').click()">
-        📷<div style="font-size:9px">Add photo</div>
+      <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px" id="manualPhotoStrip">
+        <div onclick="document.getElementById('manualFileInput').click()"
+          style="flex-shrink:0;width:90px;aspect-ratio:4/5;border-radius:10px;background:var(--surface3);border:1.5px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:var(--text3);gap:4px">
+          <i class="ti ti-camera-plus" style="font-size:22px"></i>
+          <div style="font-size:9px">Add photo</div>
+        </div>
       </div>
     </div>
     <input type="file" id="manualFileInput" accept="image/*" multiple style="display:none" onchange="handleManualPhoto(this)">
 
-    <div style="display:grid;gap:2px">
-      <label class="form-label">Player name</label>
-      <input class="form-input" id="mPlayer" placeholder="e.g. Patrick Mahomes" autocomplete="off">
+    <div style="display:grid;gap:10px">
 
-      <label class="form-label" style="margin-top:10px">Sport</label>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:2px">
-        <div class="sport-btn selected" onclick="selectSport('Baseball',this)">⚾<br><span style="font-size:9px">Baseball</span></div>
-        <div class="sport-btn" onclick="selectSport('Basketball',this)">🏀<br><span style="font-size:9px">Basketball</span></div>
-        <div class="sport-btn" onclick="selectSport('Football',this)">🏈<br><span style="font-size:9px">Football</span></div>
-        <div class="sport-btn" onclick="selectSport('Hockey',this)">🏒<br><span style="font-size:9px">Hockey</span></div>
-        <div class="sport-btn" onclick="selectSport('Soccer',this)">⚽<br><span style="font-size:9px">Soccer</span></div>
+      <div>
+        <label class="form-label">Player / Athlete</label>
+        <input class="form-input" id="mPlayer" placeholder="e.g. Rayan Cherki" autocomplete="off">
       </div>
 
-      <div class="form-row" style="margin-top:10px">
-        <div>
-          <label class="form-label">Year</label>
-          <input class="form-input" id="mYear" placeholder="2024" type="number" min="1900" max="2030">
-        </div>
-        <div>
-          <label class="form-label">Team</label>
-          <input class="form-input" id="mTeam" placeholder="e.g. Chiefs">
-        </div>
+      <div>
+        <label class="form-label">Team</label>
+        <input class="form-input" id="mTeam" placeholder="e.g. Lyon">
       </div>
 
-      <label class="form-label" style="margin-top:10px">Brand / Set</label>
-      <input class="form-input" id="mBrand" placeholder="e.g. Panini Prizm">
-
-      <div class="form-row" style="margin-top:10px">
-        <div>
-          <label class="form-label">Parallel</label>
-          <input class="form-input" id="mParallel" placeholder="e.g. Gold, Silver">
-        </div>
-        <div>
-          <label class="form-label">Numbered</label>
-          <input class="form-input" id="mNumbered" placeholder="e.g. /99">
+      <div>
+        <label class="form-label">Sport</label>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px">
+          <div class="sport-btn" onclick="selectSport('Baseball',this)">⚾<br><span style="font-size:9px">Baseball</span></div>
+          <div class="sport-btn" onclick="selectSport('Basketball',this)">🏀<br><span style="font-size:9px">Basketball</span></div>
+          <div class="sport-btn" onclick="selectSport('Football',this)">🏈<br><span style="font-size:9px">Football</span></div>
+          <div class="sport-btn" onclick="selectSport('Hockey',this)">🏒<br><span style="font-size:9px">Hockey</span></div>
+          <div class="sport-btn selected" onclick="selectSport('Soccer',this)">⚽<br><span style="font-size:9px">Soccer</span></div>
         </div>
       </div>
 
-      <label class="form-label" style="margin-top:10px">Condition / Grade</label>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
-        <div class="condition-btn" onclick="selectCondition('Near Mint or Better',this)">Near Mint+</div>
-        <div class="condition-btn" onclick="selectCondition('Excellent',this)">Excellent</div>
-        <div class="condition-btn" onclick="selectCondition('Very Good',this)">Very Good</div>
-        <div class="condition-btn" onclick="selectCondition('Poor',this)">Poor</div>
-        <div class="condition-btn" onclick="selectCondition('Graded',this)">Graded</div>
-      </div>
-      <input class="form-input" id="mGrade" placeholder="Or type grade: PSA 8, BGS 9.5..." style="margin-top:6px">
-
-      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="mRookie" style="accent-color:var(--gold)"> Rookie Card</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="mAuto" style="accent-color:var(--gold)"> Autograph</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="mRelic" style="accent-color:var(--gold)"> Relic/Patch</label>
+      <div>
+        <label class="form-label">Season / Year</label>
+        <input class="form-input" id="mYear" placeholder="e.g. 2022-23">
       </div>
 
-      <label class="form-label" style="margin-top:12px">Your price estimate</label>
+      <div>
+        <label class="form-label">Manufacturer</label>
+        <input class="form-input" id="mBrand" placeholder="e.g. Panini">
+      </div>
+
+      <div>
+        <label class="form-label">Set</label>
+        <input class="form-input" id="mSet" placeholder="e.g. 2022-23 Panini Select EPL">
+      </div>
+
+      <div>
+        <label class="form-label">Insert Set</label>
+        <input class="form-input" id="mInsertSet" placeholder="e.g. Club Prizm Badge">
+      </div>
+
       <div class="form-row">
         <div>
-          <label class="form-label" style="font-size:9px">Min $</label>
+          <label class="form-label">Parallel / Variety</label>
+          <input class="form-input" id="mParallel" placeholder="e.g. Gold Prizm">
+        </div>
+        <div>
+          <label class="form-label">Card Number</label>
+          <input class="form-input" id="mCardNumber" placeholder="e.g. 16">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label class="form-label">Numbered / Print Run</label>
+          <input class="form-input" id="mNumbered" placeholder="e.g. /99">
+        </div>
+        <div>
+          <label class="form-label">Grade</label>
+          <input class="form-input" id="mGrade" placeholder="e.g. PSA 9">
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">Condition</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+          <div class="condition-btn selected" onclick="selectCondition('Near Mint or Better',this)">Near Mint+</div>
+          <div class="condition-btn" onclick="selectCondition('Excellent',this)">Excellent</div>
+          <div class="condition-btn" onclick="selectCondition('Very Good',this)">Very Good</div>
+          <div class="condition-btn" onclick="selectCondition('Poor',this)">Poor</div>
+          <div class="condition-btn" onclick="selectCondition('Graded',this)">Graded</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="mRookie" style="accent-color:var(--gold)"> Rookie RC</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="mAuto" style="accent-color:var(--gold)"> Autographed</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="mRelic" style="accent-color:var(--gold)"> Relic / Patch</label>
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label class="form-label">Est. value min $</label>
           <input class="form-input" id="mPriceMin" placeholder="5" type="number" min="0">
         </div>
         <div>
-          <label class="form-label" style="font-size:9px">Max $</label>
+          <label class="form-label">Est. value max $</label>
           <input class="form-input" id="mPriceMax" placeholder="20" type="number" min="0">
         </div>
       </div>
 
-      <label class="form-label" style="margin-top:10px">Notes (optional)</label>
-      <input class="form-input" id="mNotes" placeholder="Any other details...">
     </div>
 
     <button class="save-btn" style="margin-top:16px;margin-bottom:8px" onclick="saveManualCard()">Save Card</button>
@@ -2379,7 +2408,10 @@ function openCropModal(cardId, imgIndex){
   image.onload = () => {
     _cropState.img = image;
     const maxW = Math.min(460, window.innerWidth - 48);
-    _cropState.scale = maxW / image.naturalWidth;
+    const maxH = Math.min(window.innerHeight * 0.5, 400);
+    const scaleW = maxW / image.naturalWidth;
+    const scaleH = maxH / image.naturalHeight;
+    _cropState.scale = Math.min(scaleW, scaleH);
     canvas.width = image.naturalWidth * _cropState.scale;
     canvas.height = image.naturalHeight * _cropState.scale;
 
@@ -2974,32 +3006,48 @@ function chooseManualWithPhoto(){
 function handleManualPhoto(input){
   const files = Array.from(input.files);
   if(!files.length) return;
-
-  // Read all files
   const readers = files.map(file => new Promise(res => {
     const r = new FileReader();
     r.onload = e => res(e.target.result);
     r.readAsDataURL(file);
   }));
-
   Promise.all(readers).then(results => {
-    // Use first image as primary, store all
-    const imgData = results[0];
-    const imgDataAll = results;
-
-    // Open manual form if not already open — reset BEFORE setting image
     if(document.getElementById('manualModal').classList.contains('hidden')){
       resetManualForm();
       document.getElementById('manualModal').classList.remove('hidden');
     }
-
-    // Set AFTER reset so it doesn't get wiped
-    manualImgData = imgData;
-    manualImgDataAll = imgDataAll;
-    showManualPhotoPreview(results);
+    manualImgDataAll = [...manualImgDataAll, ...results];
+    manualImgData = manualImgDataAll[0];
+    renderManualPhotoStrip();
   });
   input.value = '';
 }
+
+function renderManualPhotoStrip(){
+  const strip = document.getElementById('manualPhotoStrip');
+  if(!strip) return;
+  strip.innerHTML = manualImgDataAll.map((src,i) =>
+    `<div style="flex-shrink:0;width:90px;aspect-ratio:4/5;border-radius:10px;overflow:hidden;border:${i===0?'2px solid var(--gold)':'1px solid var(--border)'};background:var(--surface3);position:relative">
+      <img src="${src}" style="width:100%;height:100%;object-fit:contain">
+      <button onclick="removeManualPhoto(${i})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
+      ${i===0?'<div style="position:absolute;bottom:3px;left:3px;font-size:8px;background:rgba(0,0,0,.6);color:var(--gold);padding:1px 5px;border-radius:3px;font-weight:600">PRIMARY</div>':''}
+    </div>`
+  ).join('') +
+  `<div onclick="document.getElementById('manualFileInput').click()"
+    style="flex-shrink:0;width:90px;aspect-ratio:4/5;border-radius:10px;background:var(--surface3);border:1.5px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);gap:4px">
+    <i class="ti ti-camera-plus" style="font-size:22px"></i>
+    <div style="font-size:9px">Add photo</div>
+  </div>`;
+}
+
+function removeManualPhoto(index){
+  manualImgDataAll.splice(index, 1);
+  manualImgData = manualImgDataAll[0] || null;
+  renderManualPhotoStrip();
+}
+
+function showManualPhotoPreview(){ renderManualPhotoStrip(); }
+
 
 function showManualPhotoPreview(imgDataArr){
   const arr = Array.isArray(imgDataArr) ? imgDataArr : [imgDataArr];
@@ -3023,17 +3071,15 @@ function showManualPhotoPreview(imgDataArr){
 function resetManualForm(){
   manualImgData = null;
   manualImgDataAll = [];
-  manualSport = 'Baseball';
-  manualCondition = '';
-  ['mPlayer','mYear','mTeam','mBrand','mParallel','mNumbered','mGrade','mPriceMin','mPriceMax','mNotes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  manualSport = 'Soccer';
+  manualCondition = 'Near Mint or Better';
+  ['mPlayer','mYear','mTeam','mBrand','mSet','mInsertSet','mParallel','mCardNumber','mNumbered','mGrade','mPriceMin','mPriceMax'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   ['mRookie','mAuto','mRelic'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
-  document.querySelectorAll('.sport-btn').forEach((b,i) => b.classList.toggle('selected', i===0));
-  document.querySelectorAll('#manualModal .condition-btn').forEach(b => b.classList.remove('selected'));
-  const preview = document.getElementById('manualPhotoPreview');
-  preview.innerHTML = '📷<div style="font-size:9px">Add photo</div>';
-  preview.style.width = '80px';
-  preview.style.height = '104px';
-  preview.onclick = () => document.getElementById('manualFileInput').click();
+  document.querySelectorAll('.sport-btn').forEach(b => b.classList.remove('selected'));
+  const soccerBtn = [...document.querySelectorAll('.sport-btn')].find(b=>b.textContent.includes('Soccer'));
+  if(soccerBtn) soccerBtn.classList.add('selected');
+  document.querySelectorAll('#manualModal .condition-btn').forEach((b,i) => b.classList.toggle('selected', i===0));
+  renderManualPhotoStrip();
 }
 
 function closeManualModal(){
@@ -3066,32 +3112,36 @@ function saveManualCard(){
   const priceMax = parseFloat(document.getElementById('mPriceMax').value) || 0;
   const priceMid = priceMin && priceMax ? Math.round((priceMin + priceMax) / 2) : (priceMin || priceMax || 0);
   const grade = document.getElementById('mGrade').value.trim() || null;
-  const condition = manualCondition || (grade ? grade : 'Near Mint');
+  const condition = manualCondition || 'Near Mint or Better';
+  const teamStr = document.getElementById('mTeam').value.trim() || null;
 
   const card = {
     id: uid(),
     imgData: manualImgData || null,
     player,
-    team: document.getElementById('mTeam').value.trim() || null,
+    team: teamStr,
+    teams: teamStr ? teamStr.split(',').map(t=>t.trim()).filter(Boolean) : [],
     sport: manualSport,
     year: document.getElementById('mYear').value.trim() || null,
     brand: document.getElementById('mBrand').value.trim() || null,
-    set: null,
+    set: document.getElementById('mSet').value.trim() || null,
+    insertSet: document.getElementById('mInsertSet').value.trim() || null,
     parallel: document.getElementById('mParallel').value.trim() || null,
+    cardNumber: document.getElementById('mCardNumber').value.trim() || null,
     numbered: document.getElementById('mNumbered').value.trim() || null,
     rookie: document.getElementById('mRookie').checked,
     auto: document.getElementById('mAuto').checked,
     relic: document.getElementById('mRelic').checked,
     grade,
     condition,
+    quantity: 1,
     priceMin: priceMin || null,
     priceMax: priceMax || null,
     priceMid: priceMid || null,
-    notes: document.getElementById('mNotes').value.trim() || null,
-    ebayTitle: generateEbayTitle({player, year: document.getElementById('mYear').value.trim(), brand: document.getElementById('mBrand').value.trim(), parallel: document.getElementById('mParallel').value.trim(), numbered: document.getElementById('mNumbered').value.trim(), rookie: document.getElementById('mRookie').checked, auto: document.getElementById('mAuto').checked, grade, team: document.getElementById('mTeam').value.trim()}),
-    ebayDesc: `${player}${document.getElementById('mYear').value?' '+document.getElementById('mYear').value:''}${document.getElementById('mBrand').value?' '+document.getElementById('mBrand').value:''} sports card${document.getElementById('mRookie').checked?' rookie card':''}${document.getElementById('mAuto').checked?', autographed':''}${document.getElementById('mRelic').checked?', with relic/patch':''}. Condition: ${condition}.${document.getElementById('mNotes').value?' '+document.getElementById('mNotes').value:''}`,
     manualEntry: true,
   };
+  card.ebayTitle = generateEbayTitle(card);
+  card.ebayDesc = `${player}${card.year?' '+card.year:''}${card.brand?' '+card.brand:''} sports card${card.rookie?' Rookie RC':''}${card.auto?', autographed':''}${card.relic?', relic/patch':''}. Condition: ${condition}.`;
 
   // Compress all images before saving
   if(manualImgData){
