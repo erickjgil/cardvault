@@ -2157,10 +2157,11 @@ function openDetail(id){
   // Quantity field
   const efQty = `<div class="field" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px">
     <span class="field-key" style="font-size:9px;text-transform:uppercase;letter-spacing:.6px">Quantity</span>
-    <input value="${c.quantity||1}" type="number" min="1" max="999"
+    <input data-field="quantity" value="${c.quantity||1}" type="number" min="1" max="999"
       style="width:80px;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0;transition:border-color .15s"
       onfocus="this.style.borderBottomColor='var(--gold)'"
-      onblur="this.style.borderBottomColor='transparent';saveDetailField('${id}','quantity',this.value)"
+      onblur="this.style.borderBottomColor='transparent'"
+      oninput="markDetailDirty('${id}')"
       onkeydown="if(event.key==='Enter')this.blur()">
   </div>`;
 
@@ -2168,18 +2169,20 @@ function openDetail(id){
     `<div class="field" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px">
       <span class="field-key" style="font-size:9px;text-transform:uppercase;letter-spacing:.6px">${label}</span>
       <input
+        data-field="${field}"
         value="${(value||'').toString().replace(/"/g,'&quot;')}"
         placeholder="${placeholder||'—'}"
         type="${type}"
         style="width:100%;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0;transition:border-color .15s"
         onfocus="this.style.borderBottomColor='var(--gold)'"
-        onblur="this.style.borderBottomColor='transparent';saveDetailField('${id}','${field}',this.value)"
+        onblur="this.style.borderBottomColor='transparent'"
+        oninput="markDetailDirty('${id}')"
         onkeydown="if(event.key==='Enter')this.blur()"
       >
     </div>`;
 
   const efCheck = (label, field, value) =>
-    `<div class="field" style="cursor:pointer" onclick="toggleDetailField('${id}','${field}',this)">
+    `<div class="field" style="cursor:pointer" onclick="toggleDetailCheck('${id}','${field}',this)">
       <span class="field-key">${label}</span>
       <span class="field-val" style="color:${value?'var(--green)':'var(--text3)'}" data-field="${field}">${value?'Yes':'No'}</span>
     </div>`;
@@ -2188,10 +2191,11 @@ function openDetail(id){
     `<div class="field" style="flex-direction:column;align-items:flex-start;gap:4px;padding:8px 12px">
       <span class="field-key" style="font-size:9px;text-transform:uppercase;letter-spacing:.6px">${label}</span>
       <select
+        data-field="${field}"
         style="width:100%;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;padding:2px 0;cursor:pointer;-webkit-appearance:none"
         onfocus="this.style.borderBottomColor='var(--gold)'"
         onblur="this.style.borderBottomColor='transparent'"
-        onchange="saveDetailField('${id}','${field}',this.value)"
+        onchange="markDetailDirty('${id}')"
       >
         ${options.map(o=>`<option value="${o}" ${value===o?'selected':''}>${o}</option>`).join('')}
       </select>
@@ -2251,7 +2255,10 @@ function openDetail(id){
     <div class="section">
       <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
         <span>Card details</span>
-        <span style="font-size:10px;color:var(--text3);font-weight:400">Tap any field to edit</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;color:var(--text3);font-weight:400" id="detailEditHint">Tap to edit</span>
+          <button id="detailSaveBtn" onclick="saveDetailAll('${id}')" style="display:none;padding:5px 14px;border-radius:6px;border:none;background:var(--gold);color:#111;font-size:11px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif">Save</button>
+        </div>
       </div>
       <div class="fields" style="gap:4px">
         ${ef('Player / Athlete', 'player', c.player, 'e.g. Lionel Messi')}
@@ -2354,38 +2361,81 @@ function removeTeam(id, team, el){
   openDetail(id);
 }
 
+function markDetailDirty(id){
+  const btn = document.getElementById('detailSaveBtn');
+  const hint = document.getElementById('detailEditHint');
+  if(btn) btn.style.display = 'inline-block';
+  if(hint) hint.style.display = 'none';
+}
+
+function toggleDetailCheck(id, field, row){
+  // Toggle visually, mark dirty — don't save yet
+  const span = row.querySelector('[data-field]');
+  const next = span?.textContent !== 'Yes';
+  if(span){
+    span.textContent = next ? 'Yes' : 'No';
+    span.style.color = next ? 'var(--green)' : 'var(--text3)';
+    span.dataset.value = next ? 'yes' : 'no';
+  }
+  markDetailDirty(id);
+}
+
+function saveDetailAll(id){
+  const idx = cards.findIndex(x=>x.id===id);
+  if(idx<0) return;
+
+  // Collect all inputs/selects with data-field
+  document.querySelectorAll('[data-field]').forEach(el => {
+    const field = el.dataset.field;
+    if(!field) return;
+    if(el.tagName === 'INPUT' || el.tagName === 'SELECT'){
+      cards[idx][field] = el.value || null;
+    } else if(el.tagName === 'SPAN' && el.dataset.value !== undefined){
+      cards[idx][field] = el.dataset.value === 'yes';
+    } else if(el.tagName === 'SPAN'){
+      cards[idx][field] = el.textContent === 'Yes';
+    }
+  });
+
+  const c = cards[idx];
+  cards[idx].ebayTitle = generateEbayTitle({
+    player:c.player, year:c.year, brand:c.brand, set:c.set,
+    parallel:c.parallel, numbered:c.numbered, rookie:c.rookie,
+    auto:c.auto, grade:c.grade, team:c.team, teams:c.teams
+  });
+
+  save();
+  updateStats();
+  renderGrid();
+
+  const titleEl = document.getElementById('detailEbayTitlePreview');
+  if(titleEl) titleEl.textContent = cards[idx].ebayTitle || '';
+
+  const btn = document.getElementById('detailSaveBtn');
+  const hint = document.getElementById('detailEditHint');
+  if(btn) btn.style.display = 'none';
+  if(hint) hint.style.display = 'inline';
+
+  showToast('✓ Card saved');
+}
+
+// Legacy — used by team add/remove which re-renders the page
 function saveDetailField(id, field, value){
   const idx = cards.findIndex(x=>x.id===id);
   if(idx<0) return;
   cards[idx][field] = value || null;
-  if(['player','year','brand','parallel','numbered','rookie','auto','grade','team','set'].includes(field)){
-    const c = cards[idx];
-    cards[idx].ebayTitle = generateEbayTitle({
-      player:c.player, year:c.year, brand:c.brand, set:c.set, parallel:c.parallel,
-      numbered:c.numbered, rookie:c.rookie, auto:c.auto, grade:c.grade,
-      team:c.team, teams:c.teams
-    });
-    // Update header title preview live
-    const titleEl = document.getElementById('detailEbayTitlePreview');
-    if(titleEl) titleEl.textContent = cards[idx].ebayTitle || '';
-    // Update player subtitle if it exists
-    const sub = titleEl?.parentElement?.querySelector('div:last-child');
-    if(sub && field === 'player') sub.textContent = value || '';
-  }
+  const c = cards[idx];
+  cards[idx].ebayTitle = generateEbayTitle({
+    player:c.player, year:c.year, brand:c.brand, set:c.set,
+    parallel:c.parallel, numbered:c.numbered, rookie:c.rookie,
+    auto:c.auto, grade:c.grade, team:c.team, teams:c.teams
+  });
+  const titleEl = document.getElementById('detailEbayTitlePreview');
+  if(titleEl) titleEl.textContent = cards[idx].ebayTitle || '';
   save();
 }
 
-function toggleDetailField(id, field, el){
-  const idx = cards.findIndex(x=>x.id===id);
-  if(idx<0) return;
-  cards[idx][field] = !cards[idx][field];
-  const span = el.querySelector('[data-field]');
-  if(span){
-    span.textContent = cards[idx][field] ? 'Yes' : 'No';
-    span.style.color = cards[idx][field] ? 'var(--green)' : 'var(--text3)';
-  }
-  save();
-}
+function toggleDetailField(id, field, el){ toggleDetailCheck(id, field, el); }
 
 // -- IMAGE CROP ─────────────────────────────────────────────
 let _cropState = { cardId:null, imgIndex:0, img:null, startX:0, startY:0, endX:0, endY:0, dragging:false, scale:1 };
@@ -4302,10 +4352,11 @@ async function submitEbayListing(){
   const descBody = `${c.ebayDesc||'Sports card in good condition.'}\n\n${[c.auto?'✓ Autographed':null, c.relic?'✓ Relic/Patch':null, c.rookie?'✓ Rookie Card':null, c.numbered?'✓ Numbered '+c.numbered:null].filter(Boolean).join('\n')}\nCondition: ${condInfo.name}`;
 
   // Build XML — BIN and Auction have different price/duration structures
-  // Pure auction OR pure BIN — no hybrid
+  // eBay API: Auction uses StartPrice, FixedPriceItem uses StartPrice (= the BIN price)
+  // BuyItNowPrice is only valid on Auctions as an optional add-on
   const priceXml = isAuction
     ? `<StartPrice>${startPrice.toFixed(2)}</StartPrice>`
-    : `<BuyItNowPrice>${binPrice.toFixed(2)}</BuyItNowPrice>`;
+    : `<StartPrice>${binPrice.toFixed(2)}</StartPrice>`;
 
   const durationXml = isAuction
     ? `<ListingDuration>Days_${s.duration}</ListingDuration>`
